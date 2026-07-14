@@ -1,0 +1,2 @@
+# For a Telegram worker process
+worker: python bot.py
