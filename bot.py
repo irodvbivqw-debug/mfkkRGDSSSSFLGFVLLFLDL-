@@ -93,7 +93,7 @@ def support_kb():
 def welcome_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🔮 Вечная ссылка на бота", url=BOT_LINK)]
+            [InlineKeyboardButton(text="🔮 Вечная ссылка на OMG", url=BOT_LINK)]
         ]
     )
 
