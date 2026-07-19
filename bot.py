@@ -40,7 +40,7 @@ class AdminState(StatesGroup):
 # ===================== KEYBOARDS =====================
 main_kb = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="<tg-emoji emoji-id=\"5409227184340476957\">🟡</tg-emoji> Сдать билайн")],
+        [KeyboardButton(text="🐝 Сдать билайн")],
         [KeyboardButton(text="🆘 Поддержка")]
     ],
     resize_keyboard=True
@@ -93,7 +93,7 @@ def support_kb():
 def welcome_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="<tg-emoji emoji-id=\"5361837567463399422\">🔮</tg-emoji> Вечная ссылка на OMG", url=BOT_LINK)]
+            [InlineKeyboardButton(text="🔮 Вечная ссылка на OMG", url=BOT_LINK)]
         ]
     )
 
@@ -113,7 +113,7 @@ def escape(text: str) -> str:
 async def send_welcome(target, name: str):
     name_esc = escape(name)
     await target.answer(
-        f"<tg-emoji emoji-id=\"5413694143601842851\">👋</tg-emoji> **Привет, {name_esc}\\! Выбери действие:**",
+        f"👋 **Привет, {name_esc}\\! Выбери действие:**",
         parse_mode="MarkdownV2",
         reply_markup=main_kb
     )
@@ -160,7 +160,7 @@ async def support(message: types.Message):
     )
 
 # ===================== BILKA =====================
-@dp.message(F.text == "<tg-emoji emoji-id=\"5409227184340476957\">🟡</tg-emoji> Сдать билайн")
+@dp.message(F.text == "🐝 Сдать билайн")
 async def bilka(message: types.Message, state: FSMContext):
     await state.set_state(UserState.sale_type)
     await message.answer(
