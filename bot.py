@@ -93,7 +93,7 @@ def support_kb():
 def welcome_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🔮 Вечная ссылка на OMG", url=BOT_LINK)]
+            [InlineKeyboardButton(text="<tg-emoji emoji-id=\"5361837567463399422\">🔮</tg-emoji> Вечная ссылка на OMG", url=BOT_LINK)]
         ]
     )
 
@@ -113,7 +113,7 @@ def escape(text: str) -> str:
 async def send_welcome(target, name: str):
     name_esc = escape(name)
     await target.answer(
-        f"👋 **Привет, {name_esc}\\! Выбери действие:**",
+        f"<tg-emoji emoji-id=\"5413694143601842851\">👋</tg-emoji> **Привет, {name_esc}\\! Выбери действие:**",
         parse_mode="MarkdownV2",
         reply_markup=main_kb
     )
