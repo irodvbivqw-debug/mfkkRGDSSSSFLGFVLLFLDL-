@@ -40,7 +40,7 @@ class AdminState(StatesGroup):
 # ===================== KEYBOARDS =====================
 main_kb = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="🐝 Сдать билайн")],
+        [KeyboardButton(text="<tg-emoji emoji-id=\"5409227184340476957\">🟡</tg-emoji> Сдать билайн")],
         [KeyboardButton(text="🆘 Поддержка")]
     ],
     resize_keyboard=True
@@ -160,7 +160,7 @@ async def support(message: types.Message):
     )
 
 # ===================== BILKA =====================
-@dp.message(F.text == "🐝 Сдать билайн")
+@dp.message(F.text == "<tg-emoji emoji-id=\"5409227184340476957\">🟡</tg-emoji> Сдать билайн")
 async def bilka(message: types.Message, state: FSMContext):
     await state.set_state(UserState.sale_type)
     await message.answer(
