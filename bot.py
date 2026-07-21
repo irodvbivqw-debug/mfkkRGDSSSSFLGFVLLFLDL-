@@ -93,7 +93,7 @@ def support_kb():
 def welcome_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🔮 Вечная ссылка на OMG", url=BOT_LINK)]
+            [InlineKeyboardButton(text="Вечная ссылка на OMG", url=BOT_LINK)]
         ]
     )
 
@@ -118,7 +118,7 @@ async def send_welcome(target, name: str):
         reply_markup=main_kb
     )
     await target.answer(
-        "🔮 *Вечная ссылка на бота*\n\n"
+        f"<tg-emoji emoji-id=\"5361837567463399422\">🔮</tg-emoji> *Вечная ссылка на бота*\n\n"
         "Актуальную ссылку на бота всегда можно найти по кнопке ниже\\.\n"
         "Не теряйте нас, даже при блокировке бота\\.",
         parse_mode="MarkdownV2",
