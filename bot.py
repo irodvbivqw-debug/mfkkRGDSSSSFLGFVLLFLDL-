@@ -93,7 +93,10 @@ def support_kb():
 def welcome_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🔮 Вечная ссылка на OMG", url=BOT_LINK)]
+            [InlineKeyboardButton(
+                text="<tg-emoji emoji-id=\"5361837567463399422\">🔮</tg-emoji> Вечная ссылка на OMG",
+                url=BOT_LINK
+            )]
         ]
     )
 
