@@ -184,15 +184,17 @@ async def send_welcome(target, name: str, user_id: int):
         reply_markup=main_kb
     )
     
+    # Сообщение с вечной ссылкой отправляем ВСЕГДА
+    pinned_msg = await target.answer(
+        f'<tg-emoji emoji-id="5361837567463399422">🔮</tg-emoji> <b>Вечная ссылка на бота</b>\n\n'
+        "Актуальную ссылку на бота всегда можно найти по кнопке ниже.\n"
+        "Не теряйте нас, даже при блокировке бота.",
+        parse_mode="HTML",
+        reply_markup=welcome_kb()
+    )
+    
+    # Закрепляем только при самом первом вызове /start
     if user_id not in pinned_users:
-        pinned_msg = await target.answer(
-            f'<tg-emoji emoji-id="5361837567463399422">🔮</tg-emoji> <b>Вечная ссылка на бота</b>\n\n'
-            "Актуальную ссылку на бота всегда можно найти по кнопке ниже.\n"
-            "Не теряйте нас, даже при блокировке бота.",
-            parse_mode="HTML",
-            reply_markup=welcome_kb()
-        )
-        
         try:
             await bot.pin_chat_message(
                 chat_id=pinned_msg.chat.id,
@@ -200,7 +202,7 @@ async def send_welcome(target, name: str, user_id: int):
                 disable_notification=True
             )
             pinned_users.add(user_id)
-            # Удаляем системное сообщение о закреплении
+            # Удаляем системную служебную плашку о закреплении
             await bot.delete_message(chat_id=pinned_msg.chat.id, message_id=pinned_msg.message_id + 1)
         except Exception:
             pass
