@@ -54,7 +54,6 @@ class AdminState(StatesGroup):
     broadcast = State()
 
 # ===================== KEYBOARDS =====================
-# Зашифрованные кнопки (используются латинские буквы c, a, d, n, o, e, p и т.д.)
 BTN_SUBMIT = "🐝 Сdать бiлаyн"
 BTN_SUPPORT = "🆘 Поddержka"
 BTN_CANCEL = "❌ Отмenить сdачy"
@@ -148,7 +147,7 @@ def support_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text=" Написaть в поddержky",
+                text="Написaть в поddержky",
                 url=f"https://t.me/{SUPPORT_USERNAME.lstrip('@')}",
                 icon_custom_emoji_id="5361837567463399422",
                 style="primary"
@@ -401,8 +400,8 @@ async def cancel_finish(message: types.Message, state: FSMContext):
     if order:
         await bot.send_message(
             order["user_id"],
-            f'<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Вашa заяvka #{order_id} отмeneна</b>\n\n'
-            f'> <tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> Пpичина: {message.text}\n\n'
+            f'<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Вашa заяvка #{order_id} отмeneна</b>\n\n'
+            f'<blockquote><tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> <b>Пpичина:</b> {message.text}</blockquote>\n\n'
             f"Вы можете сdать nомер заnово.",
             parse_mode="HTML"
         )
