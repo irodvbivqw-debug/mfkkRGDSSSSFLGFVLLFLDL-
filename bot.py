@@ -109,13 +109,13 @@ def operator_kb(order_id):
             [InlineKeyboardButton(
                 text="Запросить код",
                 callback_data=f"req_{order_id}",
-                icon_custom_emoji_id="5361837567463399422",
+                icon_custom_emoji_id="5242628160297641831",
                 style="primary"
             )],
             [InlineKeyboardButton(
                 text="Отменить",
                 callback_data=f"cancel_{order_id}",
-                icon_custom_emoji_id="5413694143601842851",
+                icon_custom_emoji_id="5465665476971471368",
                 style="danger"
             )]
         ]
@@ -125,15 +125,15 @@ def user_kb(order_id):
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text="Введите код",
+                text="Ввести код",
                 callback_data=f"code_{order_id}",
-                icon_custom_emoji_id="5361837567463399422",
+                icon_custom_emoji_id="5334882760735598374",  # 📝
                 style="primary"
             )],
             [InlineKeyboardButton(
                 text="Отменить сдачу",
                 callback_data=f"user_cancel_{order_id}",
-                icon_custom_emoji_id="5413694143601842851",
+                icon_custom_emoji_id="5465665476971471368",  # ❌
                 style="danger"
             )]
         ]
@@ -184,7 +184,6 @@ async def send_welcome(target, name: str, user_id: int):
         reply_markup=main_kb
     )
     
-    # Сообщение с вечной ссылкой отправляем ВСЕГДА
     pinned_msg = await target.answer(
         f'<tg-emoji emoji-id="5361837567463399422">🔮</tg-emoji> <b>Вечная ссылка на бота</b>\n\n'
         "Актуальную ссылку на бота всегда можно найти по кнопке ниже.\n"
@@ -193,7 +192,6 @@ async def send_welcome(target, name: str, user_id: int):
         reply_markup=welcome_kb()
     )
     
-    # Закрепляем только при самом первом вызове /start
     if user_id not in pinned_users:
         try:
             await bot.pin_chat_message(
@@ -202,7 +200,6 @@ async def send_welcome(target, name: str, user_id: int):
                 disable_notification=True
             )
             pinned_users.add(user_id)
-            # Удаляем системную служебную плашку о закреплении
             await bot.delete_message(chat_id=pinned_msg.chat.id, message_id=pinned_msg.message_id + 1)
         except Exception:
             pass
@@ -263,13 +260,11 @@ async def choose_sale_type(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(sale_type=sale_type)
     await state.set_state(UserState.phone)
     
-    # Редактируем сообщение с типом
     await callback.message.edit_text(
         f"{type_emoji} <b>Тип:</b> {sale_type}",
         parse_mode="HTML"
     )
     
-    # Запрашиваем номер телефона
     await callback.message.answer(
         '<tg-emoji emoji-id="5467539229468793355">📞</tg-emoji> <b>Введите номер телефона:</b>',
         parse_mode="HTML",
@@ -282,13 +277,16 @@ async def choose_sale_type(callback: types.CallbackQuery, state: FSMContext):
 async def save_phone(message: types.Message, state: FSMContext):
     if message.text == "❌ Отменить сдачу":
         await state.clear()
-        await message.answer("❌ <b>Сдача отменена.</b>", parse_mode="HTML", reply_markup=main_kb)
+        await message.answer(
+            '<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Заявка отменена. Для выхода в главное меню /start</b>',
+            parse_mode="HTML",
+            reply_markup=main_kb
+        )
         return
 
-    # Валидация номера Билайн
     if not is_beeline_number(message.text):
         await message.answer(
-            "❌ <b>Некорректный номер телефона!</b>\n\n"
+            '<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Некорректный номер телефона!</b>\n\n'
             "Пожалуйста, введите корректный номер оператора <b>Билайн</b> "
             "начинающийся с +7, 7 или 8 (например: <code>+79031234567</code>).",
             parse_mode="HTML"
@@ -339,7 +337,7 @@ async def request_code(callback: types.CallbackQuery):
     order["status"] = "waiting_code"
     await bot.send_message(
         order["user_id"],
-        "🔔 <b>Оператор запрашивает код!</b>\n\n"
+        '<tg-emoji emoji-id="5242628160297641831">🔔</tg-emoji> <b>Оператор запрашивает код!</b>\n\n'
         "> Нажмите кнопку ниже и введите полученный код.",
         parse_mode="HTML",
         reply_markup=user_kb(order_id)
@@ -351,7 +349,10 @@ async def enter_code(callback: types.CallbackQuery, state: FSMContext):
     order_id = int(callback.data.split("_")[1])
     await state.update_data(order_id=order_id)
     await state.set_state(UserState.code)
-    await callback.message.answer("📝 <b>Введите код:</b>", parse_mode="HTML")
+    await callback.message.answer(
+        '<tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> <b>Введите код:</b>',
+        parse_mode="HTML"
+    )
     await callback.answer()
 
 @dp.message(UserState.code)
@@ -369,7 +370,10 @@ async def receive_code(message: types.Message, state: FSMContext):
         reply_markup=operator_kb(order_id)
     )
     order["status"] = "waiting_operator"
-    await message.answer("✅ <b>Код отправлен.</b>", parse_mode="HTML")
+    await message.answer(
+        '<tg-emoji emoji-id="5427009714745517609">✅</tg-emoji> <b>Код отправлен, ожидайте запроса второго кода!</b>',
+        parse_mode="HTML"
+    )
     await state.clear()
 
 # ===================== CANCEL (OPERATOR) =====================
@@ -392,8 +396,9 @@ async def cancel_finish(message: types.Message, state: FSMContext):
     if order:
         await bot.send_message(
             order["user_id"],
-            f"❌ <b>Ваша заявка #{order_id} отменена.</b>\n\n"
-            f"> 📋 Причина: {message.text}",
+            f'<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Ваша заявка #{order_id} отменена</b>\n\n'
+            f'<tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> > Причина: {message.text}\n\n'
+            f"Вы можете сдать номер заново.",
             parse_mode="HTML"
         )
         order["status"] = "cancelled"
@@ -415,7 +420,10 @@ async def user_cancel(callback: types.CallbackQuery, state: FSMContext):
             f"⚠️ <b>Заявка #{order_id} отменена пользователем</b> {order['username']}",
             parse_mode="HTML"
         )
-    await callback.message.edit_text("❌ <b>Заявка отменена.</b>", parse_mode="HTML")
+    await callback.message.edit_text(
+        '<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Заявка отменена. Для выхода в главное меню /start</b>',
+        parse_mode="HTML"
+    )
     await callback.answer()
     await state.clear()
 
