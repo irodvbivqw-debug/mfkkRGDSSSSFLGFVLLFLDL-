@@ -397,7 +397,7 @@ async def cancel_finish(message: types.Message, state: FSMContext):
         await bot.send_message(
             order["user_id"],
             f'<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Ваша заявка #{order_id} отменена</b>\n\n'
-            f'<tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> > Причина: {message.text}\n\n'
+            f'> <tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> Причина: {message.text}\n\n'
             f"Вы можете сдать номер заново.",
             parse_mode="HTML"
         )
