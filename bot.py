@@ -57,12 +57,14 @@ def sale_type_kb():
             InlineKeyboardButton(
                 text="Сдать момент",
                 callback_data="type_moment",
-                icon_custom_emoji_id="5361837567463399422"
+                icon_custom_emoji_id="5431449001532594346",  # ⚡️ эмодзи
+                style="danger"  # Красная кнопка
             ),
             InlineKeyboardButton(
                 text="Сдать холд",
                 callback_data="type_hold",
-                icon_custom_emoji_id="5361837567463399422"
+                icon_custom_emoji_id="5433737699410319194",  # 🥶 эмодзи
+                style="primary"  # Синяя кнопка
             )
         ]]
     )
@@ -73,12 +75,14 @@ def subscription_kb():
             [InlineKeyboardButton(
                 text="Подписаться на канал",
                 url=CHANNEL_INVITE_LINK,
-                icon_custom_emoji_id="5361837567463399422"
+                icon_custom_emoji_id="5361837567463399422",
+                style="primary"
             )],
             [InlineKeyboardButton(
                 text="Я подписался",
                 callback_data="check_sub",
-                icon_custom_emoji_id="5413694143601842851"
+                icon_custom_emoji_id="5413694143601842851",
+                style="success"  # Зеленая кнопка
             )]
         ]
     )
@@ -89,12 +93,14 @@ def operator_kb(order_id):
             [InlineKeyboardButton(
                 text="Запросить код",
                 callback_data=f"req_{order_id}",
-                icon_custom_emoji_id="5361837567463399422"
+                icon_custom_emoji_id="5361837567463399422",
+                style="primary"
             )],
             [InlineKeyboardButton(
                 text="Отменить",
                 callback_data=f"cancel_{order_id}",
-                icon_custom_emoji_id="5413694143601842851"
+                icon_custom_emoji_id="5413694143601842851",
+                style="danger"
             )]
         ]
     )
@@ -105,12 +111,14 @@ def user_kb(order_id):
             [InlineKeyboardButton(
                 text="Введите код",
                 callback_data=f"code_{order_id}",
-                icon_custom_emoji_id="5361837567463399422"
+                icon_custom_emoji_id="5361837567463399422",
+                style="primary"
             )],
             [InlineKeyboardButton(
                 text="Отменить сдачу",
                 callback_data=f"user_cancel_{order_id}",
-                icon_custom_emoji_id="5413694143601842851"
+                icon_custom_emoji_id="5413694143601842851",
+                style="danger"
             )]
         ]
     )
@@ -121,7 +129,8 @@ def support_kb():
             [InlineKeyboardButton(
                 text="Написать в поддержку",
                 url=f"https://t.me/{SUPPORT_USERNAME.lstrip('@')}",
-                icon_custom_emoji_id="5361837567463399422"
+                icon_custom_emoji_id="5361837567463399422",
+                style="primary"
             )]
         ]
     )
@@ -133,7 +142,7 @@ def welcome_kb():
                 text="Вечная ссылка на OMG",
                 url=BOT_LINK,
                 icon_custom_emoji_id="5361837567463399422",
-                style="primary"  # Выделяет кнопку красивым синим цветом
+                style="primary"
             )]
         ]
     )
@@ -159,7 +168,6 @@ async def send_welcome(target, name: str):
         reply_markup=main_kb
     )
     
-    # Отправка и автозакрепление сообщения со ссылкой
     pinned_msg = await target.answer(
         f'<tg-emoji emoji-id="5361837567463399422">🔮</tg-emoji> <b>Вечная ссылка на бота</b>\n\n'
         "Актуальную ссылку на бота всегда можно найти по кнопке ниже.\n"
@@ -175,7 +183,7 @@ async def send_welcome(target, name: str):
             disable_notification=True
         )
     except Exception:
-        pass  # Пропускает, если у бота недостаточно прав на закрепление
+        pass
 
 # ===================== /start =====================
 @dp.message(Command("start"))
@@ -216,7 +224,7 @@ async def support(message: types.Message):
 async def bilka(message: types.Message, state: FSMContext):
     await state.set_state(UserState.sale_type)
     await message.answer(
-        "<b>Билайн — выберите тип:</b>",
+        '<tg-emoji emoji-id="5965361771987342650">🫵</tg-emoji> <b>Билайн — выберите тип:</b>',
         parse_mode="HTML",
         reply_markup=sale_type_kb()
     )
@@ -231,7 +239,7 @@ async def choose_sale_type(callback: types.CallbackQuery, state: FSMContext):
         parse_mode="HTML"
     )
     await callback.message.answer(
-        "📱 <b>Введите номер телефона:</b>",
+        '<tg-emoji emoji-id="5467539229468793355">📞</tg-emoji> <b>Введите номер телефона:</b>',
         parse_mode="HTML",
         reply_markup=cancel_kb
     )
