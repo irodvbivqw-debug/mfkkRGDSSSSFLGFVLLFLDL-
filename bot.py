@@ -54,39 +54,75 @@ cancel_kb = ReplyKeyboardMarkup(
 def sale_type_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[[
-            InlineKeyboardButton(text="⚡ Сдать момент", callback_data="type_moment"),
-            InlineKeyboardButton(text="⏳ Сдать холд", callback_data="type_hold")
+            InlineKeyboardButton(
+                text="Сдать момент",
+                callback_data="type_moment",
+                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+            ),
+            InlineKeyboardButton(
+                text="Сдать холд",
+                callback_data="type_hold",
+                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+            )
         ]]
     )
 
 def subscription_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📣 Подписаться на канал", url=CHANNEL_INVITE_LINK)],
-            [InlineKeyboardButton(text="✅ Я подписался", callback_data="check_sub")]
+            [InlineKeyboardButton(
+                text="Подписаться на канал",
+                url=CHANNEL_INVITE_LINK,
+                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+            )],
+            [InlineKeyboardButton(
+                text="Я подписался",
+                callback_data="check_sub",
+                custom_emoji_id="5413694143601842851"  # 👋 эмодзи
+            )]
         ]
     )
 
 def operator_kb(order_id):
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🔑 Запросить код", callback_data=f"req_{order_id}")],
-            [InlineKeyboardButton(text="❌ Отменить", callback_data=f"cancel_{order_id}")]
+            [InlineKeyboardButton(
+                text="Запросить код",
+                callback_data=f"req_{order_id}",
+                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+            )],
+            [InlineKeyboardButton(
+                text="Отменить",
+                callback_data=f"cancel_{order_id}",
+                custom_emoji_id="5413694143601842851"  # 👋 эмодзи
+            )]
         ]
     )
 
 def user_kb(order_id):
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📝 Введите код", callback_data=f"code_{order_id}")],
-            [InlineKeyboardButton(text="❌ Отменить сдачу", callback_data=f"user_cancel_{order_id}")]
+            [InlineKeyboardButton(
+                text="Введите код",
+                callback_data=f"code_{order_id}",
+                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+            )],
+            [InlineKeyboardButton(
+                text="Отменить сдачу",
+                callback_data=f"user_cancel_{order_id}",
+                custom_emoji_id="5413694143601842851"  # 👋 эмодзи
+            )]
         ]
     )
 
 def support_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME.lstrip('@')}")]
+            [InlineKeyboardButton(
+                text="Написать в поддержку",
+                url=f"https://t.me/{SUPPORT_USERNAME.lstrip('@')}",
+                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+            )]
         ]
     )
 
@@ -94,8 +130,9 @@ def welcome_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text="<tg-emoji emoji-id=\"5361837567463399422\">🔮</tg-emoji> Вечная ссылка на OMG",
-                url=BOT_LINK
+                text="Вечная ссылка на OMG",
+                url=BOT_LINK,
+                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
             )]
         ]
     )
