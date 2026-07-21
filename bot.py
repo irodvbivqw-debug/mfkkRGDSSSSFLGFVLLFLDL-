@@ -113,8 +113,8 @@ def escape(text: str) -> str:
 async def send_welcome(target, name: str):
     name_esc = escape(name)
     await target.answer(
-        f"<tg-emoji emoji-id=\"5413694143601842851\">👋</tg-emoji> **Привет, {name_esc}\\! Выбери действие:**",
-        parse_mode="MarkdownV2",
+        f"<tg-emoji emoji-id=\"5413694143601842851\">👋</tg-emoji> Привет, {name_esc}! Выбери действие:",
+        parse_mode="HTML",
         reply_markup=main_kb
     )
     await target.answer(
