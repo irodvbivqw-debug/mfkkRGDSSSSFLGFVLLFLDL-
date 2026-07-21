@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
@@ -24,6 +25,21 @@ dp = Dispatcher(storage=MemoryStorage())
 orders = {}
 order_counter = 1
 all_users: set[int] = set()
+pinned_users: set[int] = set()
+
+# Коды оператора Билайн
+BEELINE_PREFIXES = {
+    "900", "902", "903", "904", "905", "906", "908", "909", 
+    "950", "951", "953", "960", "961", "962", "963", "964", 
+    "965", "966", "967", "968", "969", "976", "980", "983", "986"
+}
+
+def is_beeline_number(phone_str: str) -> bool:
+    digits = re.sub(r'\D', '', phone_str)
+    if len(digits) == 11 and digits[0] in ('7', '8'):
+        prefix = digits[1:4]
+        return prefix in BEELINE_PREFIXES
+    return False
 
 # ===================== STATES =====================
 class UserState(StatesGroup):
@@ -57,14 +73,14 @@ def sale_type_kb():
             InlineKeyboardButton(
                 text="Сдать момент",
                 callback_data="type_moment",
-                icon_custom_emoji_id="5431449001532594346",  # ⚡️ эмодзи
-                style="danger"  # Красная кнопка
+                icon_custom_emoji_id="5431449001532594346",  # ⚡️
+                style="danger"
             ),
             InlineKeyboardButton(
                 text="Сдать холд",
                 callback_data="type_hold",
-                icon_custom_emoji_id="5433737699410319194",  # 🥶 эмодзи
-                style="primary"  # Синяя кнопка
+                icon_custom_emoji_id="5433737699410319194",  # 🥶
+                style="primary"
             )
         ]]
     )
@@ -82,7 +98,7 @@ def subscription_kb():
                 text="Я подписался",
                 callback_data="check_sub",
                 icon_custom_emoji_id="5413694143601842851",
-                style="success"  # Зеленая кнопка
+                style="success"
             )]
         ]
     )
@@ -160,7 +176,7 @@ def escape(text: str) -> str:
         text = text.replace(ch, f"\\{ch}")
     return text
 
-async def send_welcome(target, name: str):
+async def send_welcome(target, name: str, user_id: int):
     name_esc = escape(name)
     await target.answer(
         f'<tg-emoji emoji-id="5413694143601842851">👋</tg-emoji> Привет, {name_esc}! Выбери действие:',
@@ -168,22 +184,26 @@ async def send_welcome(target, name: str):
         reply_markup=main_kb
     )
     
-    pinned_msg = await target.answer(
-        f'<tg-emoji emoji-id="5361837567463399422">🔮</tg-emoji> <b>Вечная ссылка на бота</b>\n\n'
-        "Актуальную ссылку на бота всегда можно найти по кнопке ниже.\n"
-        "Не теряйте нас, даже при блокировке бота.",
-        parse_mode="HTML",
-        reply_markup=welcome_kb()
-    )
-    
-    try:
-        await bot.pin_chat_message(
-            chat_id=pinned_msg.chat.id,
-            message_id=pinned_msg.message_id,
-            disable_notification=True
+    if user_id not in pinned_users:
+        pinned_msg = await target.answer(
+            f'<tg-emoji emoji-id="5361837567463399422">🔮</tg-emoji> <b>Вечная ссылка на бота</b>\n\n'
+            "Актуальную ссылку на бота всегда можно найти по кнопке ниже.\n"
+            "Не теряйте нас, даже при блокировке бота.",
+            parse_mode="HTML",
+            reply_markup=welcome_kb()
         )
-    except Exception:
-        pass
+        
+        try:
+            await bot.pin_chat_message(
+                chat_id=pinned_msg.chat.id,
+                message_id=pinned_msg.message_id,
+                disable_notification=True
+            )
+            pinned_users.add(user_id)
+            # Удаляем системное сообщение о закреплении
+            await bot.delete_message(chat_id=pinned_msg.chat.id, message_id=pinned_msg.message_id + 1)
+        except Exception:
+            pass
 
 # ===================== /start =====================
 @dp.message(Command("start"))
@@ -197,7 +217,7 @@ async def start(message: types.Message, state: FSMContext):
         )
         return
     all_users.add(message.from_user.id)
-    await send_welcome(message, message.from_user.first_name or "друг")
+    await send_welcome(message, message.from_user.first_name or "друг", message.from_user.id)
 
 # ===================== SUBSCRIPTION =====================
 @dp.callback_query(F.data == "check_sub")
@@ -207,7 +227,7 @@ async def check_subscription(callback: types.CallbackQuery, state: FSMContext):
         return
     all_users.add(callback.from_user.id)
     await callback.message.delete()
-    await send_welcome(callback.message, callback.from_user.first_name or "друг")
+    await send_welcome(callback.message, callback.from_user.first_name or "друг", callback.from_user.id)
     await callback.answer()
 
 # ===================== SUPPORT =====================
@@ -231,13 +251,23 @@ async def bilka(message: types.Message, state: FSMContext):
 
 @dp.callback_query(F.data.in_({"type_moment", "type_hold"}))
 async def choose_sale_type(callback: types.CallbackQuery, state: FSMContext):
-    sale_type = "Момент" if callback.data == "type_moment" else "Холд"
+    if callback.data == "type_moment":
+        sale_type = "Момент"
+        type_emoji = '<tg-emoji emoji-id="5431449001532594346">⚡️</tg-emoji>'
+    else:
+        sale_type = "Холд"
+        type_emoji = '<tg-emoji emoji-id="5433737699410319194">🥶</tg-emoji>'
+
     await state.update_data(sale_type=sale_type)
     await state.set_state(UserState.phone)
+    
+    # Редактируем сообщение с типом
     await callback.message.edit_text(
-        f"<b>Тип:</b> {sale_type}",
+        f"{type_emoji} <b>Тип:</b> {sale_type}",
         parse_mode="HTML"
     )
+    
+    # Запрашиваем номер телефона
     await callback.message.answer(
         '<tg-emoji emoji-id="5467539229468793355">📞</tg-emoji> <b>Введите номер телефона:</b>',
         parse_mode="HTML",
@@ -251,6 +281,16 @@ async def save_phone(message: types.Message, state: FSMContext):
     if message.text == "❌ Отменить сдачу":
         await state.clear()
         await message.answer("❌ <b>Сдача отменена.</b>", parse_mode="HTML", reply_markup=main_kb)
+        return
+
+    # Валидация номера Билайн
+    if not is_beeline_number(message.text):
+        await message.answer(
+            "❌ <b>Некорректный номер телефона!</b>\n\n"
+            "Пожалуйста, введите корректный номер оператора <b>Билайн</b> "
+            "начинающийся с +7, 7 или 8 (например: <code>+79031234567</code>).",
+            parse_mode="HTML"
+        )
         return
 
     global order_counter
@@ -282,8 +322,8 @@ async def save_phone(message: types.Message, state: FSMContext):
 
     await state.clear()
     await message.answer(
-        "✅ <b>Номер принят.</b>\n\n"
-        "> Ожидайте запроса кода от оператора.",
+        '<tg-emoji emoji-id="5413482938585063042">👍</tg-emoji> <b>Номер принят.</b>\n\n'
+        "Ожидайте запроса кода от оператора",
         parse_mode="HTML",
         reply_markup=main_kb
     )
