@@ -93,7 +93,7 @@ def support_kb():
 def welcome_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Вечная ссылка на OMG", url=BOT_LINK)]
+            [InlineKeyboardButton(text="🔮 Вечная ссылка на OMG", url=BOT_LINK)]
         ]
     )
 
@@ -118,10 +118,10 @@ async def send_welcome(target, name: str):
         reply_markup=main_kb
     )
     await target.answer(
-        f"<tg-emoji emoji-id=\"5361837567463399422\">🔮</tg-emoji> *Вечная ссылка на бота*\n\n"
-        "Актуальную ссылку на бота всегда можно найти по кнопке ниже\\.\n"
-        "Не теряйте нас, даже при блокировке бота\\.",
-        parse_mode="MarkdownV2",
+        f"<tg-emoji emoji-id=\"5361837567463399422\">🔮</tg-emoji> <b>Вечная ссылка на бота</b>\n\n"
+        "Актуальную ссылку на бота всегда можно найти по кнопке ниже.\n"
+        "Не теряйте нас, даже при блокировке бота.",
+        parse_mode="HTML",
         reply_markup=welcome_kb()
     )
 
@@ -131,8 +131,8 @@ async def start(message: types.Message, state: FSMContext):
     await state.clear()
     if not await is_subscribed(message.from_user.id):
         await message.answer(
-            "⚠️ **Для использования бота необходимо подписаться на канал:**",
-            parse_mode="MarkdownV2",
+            "⚠️ <b>Для использования бота необходимо подписаться на канал:</b>",
+            parse_mode="HTML",
             reply_markup=subscription_kb()
         )
         return
@@ -154,8 +154,8 @@ async def check_subscription(callback: types.CallbackQuery, state: FSMContext):
 @dp.message(F.text == "🆘 Поддержка")
 async def support(message: types.Message):
     await message.answer(
-        "**Нажмите кнопку ниже:**",
-        parse_mode="MarkdownV2",
+        "<b>Нажмите кнопку ниже:</b>",
+        parse_mode="HTML",
         reply_markup=support_kb()
     )
 
@@ -164,8 +164,8 @@ async def support(message: types.Message):
 async def bilka(message: types.Message, state: FSMContext):
     await state.set_state(UserState.sale_type)
     await message.answer(
-        "**Билайн — выберите тип:**",
-        parse_mode="MarkdownV2",
+        "<b>Билайн — выберите тип:</b>",
+        parse_mode="HTML",
         reply_markup=sale_type_kb()
     )
 
@@ -175,12 +175,12 @@ async def choose_sale_type(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(sale_type=sale_type)
     await state.set_state(UserState.phone)
     await callback.message.edit_text(
-        f"**Тип:** {sale_type}",
-        parse_mode="MarkdownV2"
+        f"<b>Тип:</b> {sale_type}",
+        parse_mode="HTML"
     )
     await callback.message.answer(
-        "📱 **Введите номер телефона:**",
-        parse_mode="MarkdownV2",
+        "📱 <b>Введите номер телефона:</b>",
+        parse_mode="HTML",
         reply_markup=cancel_kb
     )
     await callback.answer()
@@ -190,7 +190,7 @@ async def choose_sale_type(callback: types.CallbackQuery, state: FSMContext):
 async def save_phone(message: types.Message, state: FSMContext):
     if message.text == "❌ Отменить сдачу":
         await state.clear()
-        await message.answer("❌ **Сдача отменена\\.**", parse_mode="MarkdownV2", reply_markup=main_kb)
+        await message.answer("❌ <b>Сдача отменена.</b>", parse_mode="HTML", reply_markup=main_kb)
         return
 
     global order_counter
@@ -211,20 +211,20 @@ async def save_phone(message: types.Message, state: FSMContext):
 
     await bot.send_message(
         OPERATORS_GROUP_ID,
-        f"**Новая заявка \\#{order_id}**\n"
+        f"<b>Новая заявка #{order_id}</b>\n"
         f"━━━━━━━━━━━━━━\n"
-        f"👤 {escape(username)}\n"
-        f"📱 {escape(message.text)}\n"
+        f"👤 {username}\n"
+        f"📱 {message.text}\n"
         f"🔖 {sale_type}",
-        parse_mode="MarkdownV2",
+        parse_mode="HTML",
         reply_markup=operator_kb(order_id)
     )
 
     await state.clear()
     await message.answer(
-        "✅ **Номер принят\\.**\n\n"
-        "> Ожидайте запроса кода от оператора\\.",
-        parse_mode="MarkdownV2",
+        "✅ <b>Номер принят.</b>\n\n"
+        "> Ожидайте запроса кода от оператора.",
+        parse_mode="HTML",
         reply_markup=main_kb
     )
 
@@ -237,9 +237,9 @@ async def request_code(callback: types.CallbackQuery):
     order["status"] = "waiting_code"
     await bot.send_message(
         order["user_id"],
-        "🔔 **Оператор запрашивает код\\!**\n\n"
-        "> Нажмите кнопку ниже и введите полученный код\\.",
-        parse_mode="MarkdownV2",
+        "🔔 <b>Оператор запрашивает код!</b>\n\n"
+        "> Нажмите кнопку ниже и введите полученный код.",
+        parse_mode="HTML",
         reply_markup=user_kb(order_id)
     )
     await callback.answer("Отправлено")
@@ -249,7 +249,7 @@ async def enter_code(callback: types.CallbackQuery, state: FSMContext):
     order_id = int(callback.data.split("_")[1])
     await state.update_data(order_id=order_id)
     await state.set_state(UserState.code)
-    await callback.message.answer("📝 **Введите код:**", parse_mode="MarkdownV2")
+    await callback.message.answer("📝 <b>Введите код:</b>", parse_mode="HTML")
     await callback.answer()
 
 @dp.message(UserState.code)
@@ -260,14 +260,14 @@ async def receive_code(message: types.Message, state: FSMContext):
 
     await bot.send_message(
         OPERATORS_GROUP_ID,
-        f"**Код по заявке \\#{order_id}**\n"
+        f"<b>Код по заявке #{order_id}</b>\n"
         f"━━━━━━━━━━━━━━\n"
-        f"📝 {escape(message.text)}",
-        parse_mode="MarkdownV2",
+        f"📝 {message.text}",
+        parse_mode="HTML",
         reply_markup=operator_kb(order_id)
     )
     order["status"] = "waiting_operator"
-    await message.answer("✅ **Код отправлен\\.**", parse_mode="MarkdownV2")
+    await message.answer("✅ <b>Код отправлен.</b>", parse_mode="HTML")
     await state.clear()
 
 # ===================== CANCEL (OPERATOR) =====================
@@ -277,8 +277,8 @@ async def cancel_start(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(order_id=order_id)
     await state.set_state(OperatorState.cancel_reason)
     await callback.message.reply(
-        "✏️ **Введите причину отмены** \\(ответом на это сообщение\\):",
-        parse_mode="MarkdownV2"
+        "✏️ <b>Введите причину отмены</b> (ответом на это сообщение):",
+        parse_mode="HTML"
     )
     await callback.answer()
 
@@ -290,14 +290,14 @@ async def cancel_finish(message: types.Message, state: FSMContext):
     if order:
         await bot.send_message(
             order["user_id"],
-            f"❌ **Ваша заявка \\#{order_id} отменена\\.**\n\n"
-            f"> 📋 Причина: {escape(message.text)}",
-            parse_mode="MarkdownV2"
+            f"❌ <b>Ваша заявка #{order_id} отменена.</b>\n\n"
+            f"> 📋 Причина: {message.text}",
+            parse_mode="HTML"
         )
         order["status"] = "cancelled"
     await message.answer(
-        f"✅ **Заявка \\#{order_id} отменена\\.** Пользователь уведомлён\\.",
-        parse_mode="MarkdownV2"
+        f"✅ <b>Заявка #{order_id} отменена.</b> Пользователь уведомлён.",
+        parse_mode="HTML"
     )
     await state.clear()
 
@@ -310,10 +310,10 @@ async def user_cancel(callback: types.CallbackQuery, state: FSMContext):
         order["status"] = "cancelled"
         await bot.send_message(
             OPERATORS_GROUP_ID,
-            f"⚠️ **Заявка \\#{order_id} отменена пользователем** {escape(order['username'])}",
-            parse_mode="MarkdownV2"
+            f"⚠️ <b>Заявка #{order_id} отменена пользователем</b> {order['username']}",
+            parse_mode="HTML"
         )
-    await callback.message.edit_text("❌ **Заявка отменена\\.**", parse_mode="MarkdownV2")
+    await callback.message.edit_text("❌ <b>Заявка отменена.</b>", parse_mode="HTML")
     await callback.answer()
     await state.clear()
 
@@ -321,39 +321,39 @@ async def user_cancel(callback: types.CallbackQuery, state: FSMContext):
 @dp.message(Command("admin"))
 async def admin_panel(message: types.Message):
     if message.from_user.id not in ADMIN_IDS:
-        await message.answer("⛔ Нет доступа\\.", parse_mode="MarkdownV2")
+        await message.answer("⛔ Нет доступа.", parse_mode="HTML")
         return
     await message.answer(
-        f"🛠 **Админ\\-панель**\n\n"
-        f"👥 Пользователей в базе: **{len(all_users)}**\n\n"
-        f"`/broadcast` — рассылка всем пользователям",
-        parse_mode="MarkdownV2"
+        f"🛠 <b>Админ-панель</b>\n\n"
+        f"👥 Пользователей в базе: <b>{len(all_users)}</b>\n\n"
+        f"<code>/broadcast</code> — рассылка всем пользователям",
+        parse_mode="HTML"
     )
 
 @dp.message(Command("broadcast"))
 async def broadcast_start(message: types.Message, state: FSMContext):
     if message.from_user.id not in ADMIN_IDS:
-        await message.answer("⛔ Нет доступа\\.", parse_mode="MarkdownV2")
+        await message.answer("⛔ Нет доступа.", parse_mode="HTML")
         return
     await state.set_state(AdminState.broadcast)
     await message.answer(
-        "📢 **Введите сообщение для рассылки\\.**\n\n"
-        "> Поддерживаются текст, фото, видео\\.\n\n"
+        "📢 <b>Введите сообщение для рассылки.</b>\n\n"
+        "> Поддерживаются текст, фото, видео.\n\n"
         "Для отмены — /cancel",
-        parse_mode="MarkdownV2"
+        parse_mode="HTML"
     )
 
 @dp.message(Command("cancel"), AdminState.broadcast)
 async def broadcast_cancel(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer("❌ **Рассылка отменена\\.**", parse_mode="MarkdownV2")
+    await message.answer("❌ <b>Рассылка отменена.</b>", parse_mode="HTML")
 
 @dp.message(AdminState.broadcast)
 async def broadcast_do(message: types.Message, state: FSMContext):
     await state.clear()
     sent = 0
     failed = 0
-    await message.answer(f"⏳ **Начинаю рассылку** {len(all_users)} пользователям\\.\\.\\.", parse_mode="MarkdownV2")
+    await message.answer(f"⏳ <b>Начинаю рассылку</b> {len(all_users)} пользователям...", parse_mode="HTML")
     for user_id in list(all_users):
         try:
             await message.copy_to(user_id)
@@ -362,10 +362,10 @@ async def broadcast_do(message: types.Message, state: FSMContext):
         except Exception:
             failed += 1
     await message.answer(
-        f"✅ **Рассылка завершена\\!**\n\n"
-        f"📨 Отправлено: **{sent}**\n"
-        f"❌ Ошибок: **{failed}**",
-        parse_mode="MarkdownV2"
+        f"✅ <b>Рассылка завершена!</b>\n\n"
+        f"📨 Отправлено: <b>{sent}</b>\n"
+        f"❌ Ошибок: <b>{failed}</b>",
+        parse_mode="HTML"
     )
 
 # ===================== MAIN =====================
