@@ -57,12 +57,12 @@ def sale_type_kb():
             InlineKeyboardButton(
                 text="Сдать момент",
                 callback_data="type_moment",
-                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+                icon_custom_emoji_id="5361837567463399422"
             ),
             InlineKeyboardButton(
                 text="Сдать холд",
                 callback_data="type_hold",
-                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+                icon_custom_emoji_id="5361837567463399422"
             )
         ]]
     )
@@ -73,12 +73,12 @@ def subscription_kb():
             [InlineKeyboardButton(
                 text="Подписаться на канал",
                 url=CHANNEL_INVITE_LINK,
-                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+                icon_custom_emoji_id="5361837567463399422"
             )],
             [InlineKeyboardButton(
                 text="Я подписался",
                 callback_data="check_sub",
-                custom_emoji_id="5413694143601842851"  # 👋 эмодзи
+                icon_custom_emoji_id="5413694143601842851"
             )]
         ]
     )
@@ -89,12 +89,12 @@ def operator_kb(order_id):
             [InlineKeyboardButton(
                 text="Запросить код",
                 callback_data=f"req_{order_id}",
-                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+                icon_custom_emoji_id="5361837567463399422"
             )],
             [InlineKeyboardButton(
                 text="Отменить",
                 callback_data=f"cancel_{order_id}",
-                custom_emoji_id="5413694143601842851"  # 👋 эмодзи
+                icon_custom_emoji_id="5413694143601842851"
             )]
         ]
     )
@@ -105,12 +105,12 @@ def user_kb(order_id):
             [InlineKeyboardButton(
                 text="Введите код",
                 callback_data=f"code_{order_id}",
-                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+                icon_custom_emoji_id="5361837567463399422"
             )],
             [InlineKeyboardButton(
                 text="Отменить сдачу",
                 callback_data=f"user_cancel_{order_id}",
-                custom_emoji_id="5413694143601842851"  # 👋 эмодзи
+                icon_custom_emoji_id="5413694143601842851"
             )]
         ]
     )
@@ -121,7 +121,7 @@ def support_kb():
             [InlineKeyboardButton(
                 text="Написать в поддержку",
                 url=f"https://t.me/{SUPPORT_USERNAME.lstrip('@')}",
-                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+                icon_custom_emoji_id="5361837567463399422"
             )]
         ]
     )
@@ -132,7 +132,8 @@ def welcome_kb():
             [InlineKeyboardButton(
                 text="Вечная ссылка на OMG",
                 url=BOT_LINK,
-                custom_emoji_id="5361837567463399422"  # 🔮 эмодзи
+                icon_custom_emoji_id="5361837567463399422",
+                style="primary"  # Выделяет кнопку красивым синим цветом
             )]
         ]
     )
@@ -153,17 +154,28 @@ def escape(text: str) -> str:
 async def send_welcome(target, name: str):
     name_esc = escape(name)
     await target.answer(
-        f"<tg-emoji emoji-id=\"5413694143601842851\">👋</tg-emoji> Привет, {name_esc}! Выбери действие:",
+        f'<tg-emoji emoji-id="5413694143601842851">👋</tg-emoji> Привет, {name_esc}! Выбери действие:',
         parse_mode="HTML",
         reply_markup=main_kb
     )
-    await target.answer(
-        f"<tg-emoji emoji-id=\"5361837567463399422\">🔮</tg-emoji> <b>Вечная ссылка на бота</b>\n\n"
+    
+    # Отправка и автозакрепление сообщения со ссылкой
+    pinned_msg = await target.answer(
+        f'<tg-emoji emoji-id="5361837567463399422">🔮</tg-emoji> <b>Вечная ссылка на бота</b>\n\n'
         "Актуальную ссылку на бота всегда можно найти по кнопке ниже.\n"
         "Не теряйте нас, даже при блокировке бота.",
         parse_mode="HTML",
         reply_markup=welcome_kb()
     )
+    
+    try:
+        await bot.pin_chat_message(
+            chat_id=pinned_msg.chat.id,
+            message_id=pinned_msg.message_id,
+            disable_notification=True
+        )
+    except Exception:
+        pass  # Пропускает, если у бота недостаточно прав на закрепление
 
 # ===================== /start =====================
 @dp.message(Command("start"))
