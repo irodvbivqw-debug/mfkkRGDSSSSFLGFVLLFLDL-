@@ -75,13 +75,13 @@ def sale_type_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[[
             InlineKeyboardButton(
-                text="Сdать момеnт",
+                text="Сdать момеnт - 17$",
                 callback_data="type_moment",
                 icon_custom_emoji_id="5431449001532594346",  # ⚡️
                 style="danger"
             ),
             InlineKeyboardButton(
-                text="Сdать xолd",
+                text="Сdать xолd - 23$",
                 callback_data="type_hold",
                 icon_custom_emoji_id="5433737699410319194",  # 🥶
                 style="primary"
