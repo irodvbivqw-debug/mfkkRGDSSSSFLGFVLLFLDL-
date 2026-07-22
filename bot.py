@@ -2,10 +2,9 @@ import asyncio
 import logging
 import os
 import re
-import sqlite3
 
 from aiogram import Bot, Dispatcher, F, types
-from aiogram.filters import Command, CommandObject
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -27,72 +26,6 @@ orders = {}
 order_counter = 1
 all_users: set[int] = set()
 pinned_users: set[int] = set()
-
-# ===================== DATABASE SETUP =====================
-DB_PATH = "bot_database.db"
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        user_id INTEGER PRIMARY KEY,
-        referrer_id INTEGER,
-        balance REAL DEFAULT 0.0,
-        successful_deals INTEGER DEFAULT 0,
-        cancelled_deals INTEGER DEFAULT 0,
-        ref_earnings REAL DEFAULT 0.0
-    )
-    """)
-    conn.commit()
-    conn.close()
-
-init_db()
-
-def get_user(user_id: int):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT user_id, referrer_id, balance, successful_deals, cancelled_deals, ref_earnings FROM users WHERE user_id = ?", (user_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return row
-
-def register_user(user_id: int, referrer_id: int = None) -> bool:
-    """Возвращает True, если зарегистрирован НОВЫЙ пользователь"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
-    if cursor.fetchone() is not None:
-        conn.close()
-        return False
-    
-    cursor.execute("INSERT INTO users (user_id, referrer_id) VALUES (?, ?)", (user_id, referrer_id))
-    conn.commit()
-    conn.close()
-    return True
-
-def update_user_balance(user_id: int, amount: float):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
-    conn.commit()
-    conn.close()
-
-def increment_deals(user_id: int, successful: bool = True):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    field = "successful_deals" if successful else "cancelled_deals"
-    cursor.execute(f"UPDATE users SET {field} = {field} + 1 WHERE user_id = ?", (user_id,))
-    conn.commit()
-    conn.close()
-
-def get_referrals_count(user_id: int):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM users WHERE referrer_id = ?", (user_id,))
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count
 
 # Коды оператора Билайн
 BEELINE_PREFIXES = {
@@ -122,14 +55,13 @@ class AdminState(StatesGroup):
 
 # ===================== KEYBOARDS =====================
 BTN_SUBMIT = "🐝 Сdать бiлаyн"
-BTN_PROFILE = "👤 Mой пpoфиль"
 BTN_SUPPORT = "🆘 Поddержka"
 BTN_CANCEL = "❌ Отмenить сdачy"
 
 main_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text=BTN_SUBMIT)],
-        [KeyboardButton(text=BTN_PROFILE), KeyboardButton(text=BTN_SUPPORT)]
+        [KeyboardButton(text=BTN_SUPPORT)]
     ],
     resize_keyboard=True
 )
@@ -183,12 +115,6 @@ def operator_kb(order_id):
                 callback_data=f"req_{order_id}",
                 icon_custom_emoji_id="5242628160297641831",
                 style="primary"
-            )],
-            [InlineKeyboardButton(
-                text="Зачесть",
-                callback_data=f"approve_{order_id}",
-                icon_custom_emoji_id="5413694143601842851",
-                style="success"
             )],
             [InlineKeyboardButton(
                 text="Отмеnить",
@@ -284,72 +210,17 @@ async def send_welcome(target, name: str, user_id: int):
 
 # ===================== /start =====================
 @dp.message(Command("start"))
-async def start(message: types.Message, command: CommandObject, state: FSMContext):
+async def start(message: types.Message, state: FSMContext):
     await state.clear()
-    user_id = message.from_user.id
-    
-    referrer_id = None
-    if command.args and command.args.startswith("ref_"):
-        try:
-            possible_ref = int(command.args.split("_")[1])
-            if possible_ref != user_id:
-                referrer_id = possible_ref
-        except ValueError:
-            pass
-
-    # Регистрируем пользователя
-    is_new = register_user(user_id, referrer_id)
-
-    # Уведомляем рефовода при первой регистрации по его ссылке
-    if is_new and referrer_id:
-        try:
-            user_tag = f"@{message.from_user.username}" if message.from_user.username else f"id:{user_id}"
-            await bot.send_message(
-                referrer_id,
-                f"🎉 По вашей реферальной ссылке зашел <b>{user_tag}</b>!\n"
-                f"Вам будет начисляться <b>$1.00</b> с каждой его успешной сдачи.",
-                parse_mode="HTML"
-            )
-        except Exception:
-            pass
-
-    if not await is_subscribed(user_id):
+    if not await is_subscribed(message.from_user.id):
         await message.answer(
             "⚠️ <b>Dля исполъзовanия бoтa nеобxодимо поdписaться nа kаnaл:</b>",
             parse_mode="HTML",
             reply_markup=subscription_kb()
         )
         return
-    
-    all_users.add(user_id)
-    await send_welcome(message, message.from_user.first_name or "dpyг", user_id)
-
-# ===================== PROFILE =====================
-@dp.message(F.text == BTN_PROFILE)
-async def show_profile(message: types.Message):
-    user_data = get_user(message.from_user.id)
-    if not user_data:
-        register_user(message.from_user.id)
-        user_data = get_user(message.from_user.id)
-
-    _, _, balance, succ_deals, canc_deals, ref_earn = user_data
-    ref_count = get_referrals_count(message.from_user.id)
-    
-    bot_info = await bot.get_me()
-    ref_link = f"https://t.me/{bot_info.username}?start=ref_{message.from_user.id}"
-
-    profile_text = (
-        f"👤 <b>Ваш Профиль:</b>\n"
-        f"━━━━━━━━━━━━━━\n"
-        f"✅ Успешно сдано: <b>{succ_deals}</b>\n"
-        f"❌ Отменено: <b>{canc_deals}</b>\n"
-        f"💵 Баланс: <b>${balance:.2f}</b>\n\n"
-        f"👥 Приглашено рефералов: <b>{ref_count}</b>\n"
-        f"💰 Заработано с рефералов: <b>${ref_earn:.2f}</b>\n"
-        f"🔗 Ваша реф. ссылка:\n<code>{ref_link}</code>"
-    )
-
-    await message.answer(profile_text, parse_mode="HTML")
+    all_users.add(message.from_user.id)
+    await send_welcome(message, message.from_user.first_name or "dpyг", message.from_user.id)
 
 # ===================== SUBSCRIPTION =====================
 @dp.callback_query(F.data == "check_sub")
@@ -509,56 +380,6 @@ async def receive_code(message: types.Message, state: FSMContext):
     )
     await state.clear()
 
-# ===================== APPROVE (OPERATOR) =====================
-@dp.callback_query(F.data.startswith("approve_"))
-async def approve_order(callback: types.CallbackQuery):
-    order_id = int(callback.data.split("_")[1])
-    order = orders.get(order_id)
-    
-    if not order:
-        await callback.answer("Ошибка: Заявка не найдена!")
-        return
-
-    user_id = order["user_id"]
-    increment_deals(user_id, successful=True)
-
-    # Реферальное зачисление
-    user_info = get_user(user_id)
-    referrer_id = user_info[1] if user_info else None
-    
-    if referrer_id:
-        update_user_balance(referrer_id, 1.0)
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET ref_earnings = ref_earnings + 1.0 WHERE user_id = ?", (referrer_id,))
-        conn.commit()
-        conn.close()
-        
-        try:
-            sub_user = await bot.get_chat(user_id)
-            sub_tag = f"@{sub_user.username}" if sub_user.username else f"id:{user_id}"
-            await bot.send_message(
-                referrer_id, 
-                f"💰 Ваш реферал <b>{sub_tag}</b> успешно сдал номер!\nВам начислено <b>+$1.00</b> на баланс.", 
-                parse_mode="HTML"
-            )
-        except Exception:
-            pass
-
-    order["status"] = "approved"
-    
-    await bot.send_message(
-        user_id,
-        '<tg-emoji emoji-id="5427009714745517609">✅</tg-emoji> <b>Ваша сдача успешно зачтена!</b>',
-        parse_mode="HTML"
-    )
-    
-    await callback.message.edit_text(
-        f"✅ <b>Заявка #{order_id} успешно зачтена!</b>",
-        parse_mode="HTML"
-    )
-    await callback.answer("Зачтено!")
-
 # ===================== CANCEL (OPERATOR) =====================
 @dp.callback_query(F.data.startswith("cancel_"))
 async def cancel_start(callback: types.CallbackQuery, state: FSMContext):
@@ -577,11 +398,8 @@ async def cancel_finish(message: types.Message, state: FSMContext):
     order_id = data["order_id"]
     order = orders.get(order_id)
     if order:
-        user_id = order["user_id"]
-        increment_deals(user_id, successful=False)
-        
         await bot.send_message(
-            user_id,
+            order["user_id"],
             f'<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Вашa заяvка #{order_id} отмeneна</b>\n\n'
             f'<blockquote><tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> <b>Пpичина:</b> {message.text}</blockquote>\n\n'
             f"Вы можете сdать nомер заnово.",
