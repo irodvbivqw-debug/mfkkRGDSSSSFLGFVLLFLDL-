@@ -95,13 +95,13 @@ def subscription_kb():
             [InlineKeyboardButton(
                 text="Поdписaться на kаnал",
                 url=CHANNEL_INVITE_LINK,
-                icon_custom_emoji_id="5361837567463399422",
+                icon_custom_emoji_id="5444965061749644170",
                 style="primary"
             )],
             [InlineKeyboardButton(
                 text="Я поdписался",
                 callback_data="check_sub",
-                icon_custom_emoji_id="5413694143601842851",
+                icon_custom_emoji_id="5413482938585063042",
                 style="success"
             )]
         ]
