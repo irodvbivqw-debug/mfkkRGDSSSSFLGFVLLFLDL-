@@ -96,7 +96,7 @@ def subscription_kb():
                 text="Поdписaться на kаnал",
                 url=CHANNEL_INVITE_LINK,
                 icon_custom_emoji_id="5444965061749644170",
-                style="primary"
+                style="danger"  # Сделано красным
             )],
             [InlineKeyboardButton(
                 text="Я поdписался",
@@ -214,7 +214,7 @@ async def start(message: types.Message, state: FSMContext):
     await state.clear()
     if not await is_subscribed(message.from_user.id):
         await message.answer(
-            "⚠️ <b>Dля исполъзовanия бoтa nеобxодимо поdписaться nа kаnaл:</b>",
+            '<tg-emoji emoji-id="5274099962655816924">❗️</tg-emoji> <b>Dля исполъзовanия бoтa nеобxодимо поdписaться nа kаnaл:</b>',
             parse_mode="HTML",
             reply_markup=subscription_kb()
         )
