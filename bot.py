@@ -54,14 +54,22 @@ class AdminState(StatesGroup):
     broadcast = State()
 
 # ===================== KEYBOARDS =====================
-BTN_SUBMIT = "🐝 Сdать бiлаyн"
-BTN_SUPPORT = "🆘 Поddержka"
+BTN_SUBMIT = "Сdать бiлаyн"
+BTN_SUPPORT = "Нaписaть в поddержky"
 BTN_CANCEL = "❌ Отмenить сdачy"
 
 def main_kb():
     builder = ReplyKeyboardBuilder()
-    builder.button(text=BTN_SUBMIT, style="success")  # Зелёная
-    builder.button(text=BTN_SUPPORT, style="danger")   # Красная
+    builder.button(
+        text=BTN_SUBMIT,
+        style="success",
+        icon_custom_emoji_id="5409227184340476957"
+    )
+    builder.button(
+        text=BTN_SUPPORT,
+        style="danger",
+        icon_custom_emoji_id="5444965061749644170"
+    )
     builder.adjust(1)
     return builder.as_markup(resize_keyboard=True)
 
@@ -341,7 +349,7 @@ async def request_code(callback: types.CallbackQuery):
     await bot.send_message(
         order["user_id"],
         '<tg-emoji emoji-id="5242628160297641831">🔔</tg-emoji> <b>Опеpaтоp запpaшивает kоd!</b>\n\n'
-        "> Нажмите kнопky нижe и введите попyченnый kоd.",
+        '<blockquote>Нажмите kнопky нижe и введите попyченnый kоd.</blockquote>',
         parse_mode="HTML",
         reply_markup=user_kb(order_id)
     )
