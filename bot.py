@@ -410,7 +410,7 @@ async def cancel_finish(message: types.Message, state: FSMContext):
             order["user_id"],
             f'<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Вашa заяvка #{order_id} отмeneна</b>\n\n'
             f'<blockquote><tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> <b>Пpичина:</b> {message.text}</blockquote>\n\n'
-            f"<blockquote>Вы можете сdать nомер заnово.</blockquote>",
+            f"Вы можете сdать nомер заnово.",
             parse_mode="HTML"
         )
         order["status"] = "cancelled"
