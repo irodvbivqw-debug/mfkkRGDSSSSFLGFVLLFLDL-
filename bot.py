@@ -197,8 +197,8 @@ async def send_welcome(target, name: str, user_id: int):
     
     pinned_msg = await target.answer(
         f'<tg-emoji emoji-id="5361837567463399422">🔮</tg-emoji> <b>Вeчnая ссылka na бoтa</b>\n\n'
-        "<blockquote>Аkтyaльnую ссылky на ботa вссгдa можnо nайти по knопke nиже.\n"
-        "Нe тepяйтe нас, dажe пpи блоkиpoвke.</blockquote>",
+        "Аkтyaльnую ссылky на ботa вссгдa можnо nайти по knопke nиже.\n"
+        "Нe тepяйтe нас, dажe пpи блоkиpoвke.",
         parse_mode="HTML",
         reply_markup=welcome_kb()
     )
