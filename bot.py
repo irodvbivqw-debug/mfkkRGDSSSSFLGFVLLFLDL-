@@ -18,6 +18,7 @@ CHANNEL_INVITE_LINK = os.getenv("CHANNEL_INVITE_LINK")
 SUPPORT_USERNAME = os.getenv("SUPPORT_USERNAME")
 ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x]
 BOT_LINK = os.getenv("BOT_LINK")
+FAQ_LINK = "https://t.me/+uu37yAQxUFM2YzMy"
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(BOT_TOKEN)
@@ -162,6 +163,15 @@ def support_kb():
         ]
     )
 
+# Кнопка FAQ (красный стиль + custom emoji)
+def faq_btn():
+    return InlineKeyboardButton(
+        text="FAQ",
+        url=FAQ_LINK,
+        icon_custom_emoji_id="5314504236132747481",
+        style="danger"
+    )
+
 def welcome_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -170,7 +180,8 @@ def welcome_kb():
                 url=BOT_LINK,
                 icon_custom_emoji_id="5361837567463399422",
                 style="primary"
-            )]
+            )],
+            [faq_btn()]
         ]
     )
 
