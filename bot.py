@@ -56,7 +56,7 @@ class AdminState(StatesGroup):
 
 # ===================== KEYBOARDS =====================
 BTN_SUBMIT = "Сdать бiлаyn"
-BTN_PROFILE = "👤 Мой профиль"
+BTN_PROFILE = "Мой профиль"
 BTN_SUPPORT = "Нaписaть в поddержky"
 BTN_CANCEL = "❌ Отмenить сdачy"
 
@@ -69,14 +69,15 @@ def main_kb():
     )
     builder.button(
         text=BTN_PROFILE,
-        icon_custom_emoji_id="6032693626394382504"
+        style="primary",
+        icon_custom_emoji_id="5415594207068822547"
     )
     builder.button(
         text=BTN_SUPPORT,
         style="danger",
         icon_custom_emoji_id="5444965061749644170"
     )
-    builder.adjust(1, 2)  # 1 кнопка сверху, 2 в нижнем ряду
+    builder.adjust(1, 2)
     return builder.as_markup(resize_keyboard=True)
 
 cancel_kb = ReplyKeyboardMarkup(
@@ -170,7 +171,7 @@ def support_kb():
 
 def faq_btn():
     return InlineKeyboardButton(
-        text="FAQ (обязательно к прочтению)",
+        text="FAQ",
         url=FAQ_LINK,
         icon_custom_emoji_id="5314504236132747481",
         style="danger"
@@ -266,7 +267,7 @@ async def profile(message: types.Message):
     first_name = message.from_user.first_name or "Пользователь"
 
     await message.answer(
-        f'<tg-emoji emoji-id="6032693626394382504">👤</tg-emoji> <b>Мой профиль</b>\n'
+        f'<tg-emoji emoji-id="5415594207068822547">🤑</tg-emoji> <b>Мой профиль</b>\n'
         f"━━━━━━━━━━━━━━\n"
         f"<b>Имя:</b> {escape(first_name)}\n"
         f"<b>Юзернейм:</b> {username}\n"
