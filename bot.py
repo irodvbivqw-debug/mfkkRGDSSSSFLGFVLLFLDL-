@@ -166,7 +166,7 @@ def support_kb():
 # Кнопка FAQ (красный стиль + custom emoji)
 def faq_btn():
     return InlineKeyboardButton(
-        text="FAQ",
+        text="FAQ (обязательно)",
         url=FAQ_LINK,
         icon_custom_emoji_id="5314504236132747481",
         style="danger"
