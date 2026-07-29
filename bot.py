@@ -55,7 +55,8 @@ class AdminState(StatesGroup):
     broadcast = State()
 
 # ===================== KEYBOARDS =====================
-BTN_SUBMIT = "Сdать бiлаyн"
+BTN_SUBMIT = "Сdать бiлаyn"
+BTN_PROFILE = "👤 Мой профиль"
 BTN_SUPPORT = "Нaписaть в поddержky"
 BTN_CANCEL = "❌ Отмenить сdачy"
 
@@ -67,11 +68,15 @@ def main_kb():
         icon_custom_emoji_id="5409227184340476957"
     )
     builder.button(
+        text=BTN_PROFILE,
+        icon_custom_emoji_id="6032693626394382504"
+    )
+    builder.button(
         text=BTN_SUPPORT,
         style="danger",
         icon_custom_emoji_id="5444965061749644170"
     )
-    builder.adjust(1)
+    builder.adjust(1, 2)  # 1 кнопка сверху, 2 в нижнем ряду
     return builder.as_markup(resize_keyboard=True)
 
 cancel_kb = ReplyKeyboardMarkup(
@@ -163,7 +168,6 @@ def support_kb():
         ]
     )
 
-# Кнопка FAQ (красный стиль + custom emoji)
 def faq_btn():
     return InlineKeyboardButton(
         text="FAQ",
@@ -250,6 +254,28 @@ async def check_subscription(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await send_welcome(callback.message, callback.from_user.first_name or "dpyг", callback.from_user.id)
     await callback.answer()
+
+# ===================== PROFILE =====================
+@dp.message(F.text == BTN_PROFILE)
+async def profile(message: types.Message):
+    user_id = message.from_user.id
+    user_orders = [o for o in orders.values() if o.get("user_id") == user_id]
+    total_orders = len(user_orders)
+    
+    username = f"@{message.from_user.username}" if message.from_user.username else "не указан"
+    first_name = message.from_user.first_name or "Пользователь"
+
+    await message.answer(
+        f'<tg-emoji emoji-id="6032693626394382504">👤</tg-emoji> <b>Мой профиль</b>\n'
+        f"━━━━━━━━━━━━━━\n"
+        f"<b>Имя:</b> {escape(first_name)}\n"
+        f"<b>Юзернейм:</b> {username}\n"
+        f"<b>ID:</b> <code>{user_id}</code>\n\n"
+        f'<tg-emoji emoji-id="5427009714745517609">📊</tg-emoji> <b>Статистика:</b>\n'
+        f"├ Всего заявок: <b>{total_orders}</b>\n"
+        f"└ Статус подписки: <b>АКТИВНА</b> ✅",
+        parse_mode="HTML"
+    )
 
 # ===================== SUPPORT =====================
 @dp.message(F.text == BTN_SUPPORT)
