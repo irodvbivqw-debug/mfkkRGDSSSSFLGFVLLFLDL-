@@ -29,7 +29,7 @@ order_counter = 1
 all_users: set[int] = set()
 pinned_users: set[int] = set()
 
-# Хранилище балансов пользователей (в продакшене используйте БД)
+# Хранилище балансов пользователей (user_id -> float)
 user_balances = {}
 
 BEELINE_PREFIXES = {
@@ -54,15 +54,16 @@ class UserState(StatesGroup):
 
 class OperatorState(StatesGroup):
     cancel_reason = State()
+    credit_amount = State()  # Для ввода суммы зачёта
 
 class AdminState(StatesGroup):
     broadcast = State()
 
 # ===================== KEYBOARDS =====================
-BTN_SUBMIT = "Сdать бiлаyn"
+BTN_SUBMIT = "Сдать билайн"
 BTN_PROFILE = "Мой профиль"
-BTN_SUPPORT = "Нaписaть в поddержky"
-BTN_CANCEL = "❌ Отмenить сdачy"
+BTN_SUPPORT = "Написать в поддержку"
+BTN_CANCEL = "❌ Отменить сдачу"
 
 def main_kb():
     builder = ReplyKeyboardBuilder()
@@ -93,13 +94,13 @@ def sale_type_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[[
             InlineKeyboardButton(
-                text="Сdать момеnт - 17$",
+                text="Сдать момент - 17$",
                 callback_data="type_moment",
                 icon_custom_emoji_id="5431449001532594346",
                 style="danger"
             ),
             InlineKeyboardButton(
-                text="Сdать xолd - 23$",
+                text="Сдать холд - 23$",
                 callback_data="type_hold",
                 icon_custom_emoji_id="5433737699410319194",
                 style="primary"
@@ -111,13 +112,13 @@ def subscription_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text="Поdписaться на kаnал",
+                text="Подписаться на канал",
                 url=CHANNEL_INVITE_LINK,
                 icon_custom_emoji_id="5444965061749644170",
                 style="danger"
             )],
             [InlineKeyboardButton(
-                text="Я поdписался",
+                text="Я подписался",
                 callback_data="check_sub",
                 icon_custom_emoji_id="5413482938585063042",
                 style="success"
@@ -128,18 +129,28 @@ def subscription_kb():
 def operator_kb(order_id):
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(
-                text="Запросить koд",
-                callback_data=f"req_{order_id}",
-                icon_custom_emoji_id="5242628160297641831",
-                style="primary"
-            )],
-            [InlineKeyboardButton(
-                text="Отмеnить",
-                callback_data=f"cancel_{order_id}",
-                icon_custom_emoji_id="5465665476971471368",
-                style="danger"
-            )]
+            [
+                InlineKeyboardButton(
+                    text="Зачесть",
+                    callback_data=f"credit_{order_id}",
+                    icon_custom_emoji_id="5413482938585063042",
+                    style="success"
+                ),
+                InlineKeyboardButton(
+                    text="Запросить код",
+                    callback_data=f"req_{order_id}",
+                    icon_custom_emoji_id="5242628160297641831",
+                    style="primary"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Отменить",
+                    callback_data=f"cancel_{order_id}",
+                    icon_custom_emoji_id="5465665476971471368",
+                    style="danger"
+                )
+            ]
         ]
     )
 
@@ -147,13 +158,13 @@ def user_kb(order_id):
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text="Ввести koд",
+                text="Ввести код",
                 callback_data=f"code_{order_id}",
                 icon_custom_emoji_id="5334882760735598374",
                 style="primary"
             )],
             [InlineKeyboardButton(
-                text="Отмеnить сdaчy",
+                text="Отменить сдачу",
                 callback_data=f"user_cancel_{order_id}",
                 icon_custom_emoji_id="5465665476971471368",
                 style="danger"
@@ -165,7 +176,7 @@ def support_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text="Написaть в поddержky",
+                text="Написать в поддержку",
                 url=f"https://t.me/{SUPPORT_USERNAME.lstrip('@')}",
                 icon_custom_emoji_id="5361837567463399422",
                 style="primary"
@@ -185,7 +196,7 @@ def welcome_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text="Вeчnая ссылka na OMG",
+                text="Вечная ссылка на OMG",
                 url=BOT_LINK,
                 icon_custom_emoji_id="5361837567463399422",
                 style="primary"
@@ -199,7 +210,7 @@ def profile_inline_kb():
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="Вывести баланс",
+                    text="💸 Вывести баланс",
                     callback_data="withdraw_start",
                     icon_custom_emoji_id="5382199784075448966"
                 )
@@ -212,13 +223,13 @@ def withdraw_kb():
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="Вывести весь баланс",
+                    text="⚡️ Вывести весь баланс",
                     callback_data="withdraw_all",
                     icon_custom_emoji_id="5456140674028019486",
                     style="danger"
                 ),
                 InlineKeyboardButton(
-                    text="Указать сумму",
+                    text="🧾 Указать сумму",
                     callback_data="withdraw_custom",
                     icon_custom_emoji_id="5444856076954520455",
                     style="success"
@@ -243,15 +254,15 @@ def escape(text: str) -> str:
 async def send_welcome(target, name: str, user_id: int):
     name_esc = escape(name)
     await target.answer(
-        f'<tg-emoji emoji-id="5413694143601842851">👋</tg-emoji> Пpивeт, {name_esc}! Выбepи dействие:',
+        f'<tg-emoji emoji-id="5413694143601842851">👋</tg-emoji> <b>Привет, {name_esc}! Выбери действие:</b>',
         parse_mode="HTML",
         reply_markup=main_kb()
     )
     
     pinned_msg = await target.answer(
-        f'<tg-emoji emoji-id="5361837567463399422">🔮</tg-emoji> <b>Вeчnая ссылka na бoтa</b>\n\n'
-        "Аkтyaльnую ссылky на ботa вссгдa можnо nайти по knопke nиже.\n"
-        "Нe тepяйтe нас, dажe пpи блоkиpoвke.",
+        f'<tg-emoji emoji-id="5361837567463399422">🔮</tg-emoji> <b>Вечная ссылка на бота</b>\n\n'
+        "Актуальную ссылку на бота всегда можно найти по кнопке ниже.\n"
+        "Не теряйте нас, даже при блокировке.",
         parse_mode="HTML",
         reply_markup=welcome_kb()
     )
@@ -274,23 +285,23 @@ async def start(message: types.Message, state: FSMContext):
     await state.clear()
     if not await is_subscribed(message.from_user.id):
         await message.answer(
-            '<tg-emoji emoji-id="5274099962655816924">❗️</tg-emoji> <b>Dля исполъзовanия бoтa nеобxодимо поdписaться nа kаnaл:</b>',
+            '<tg-emoji emoji-id="5274099962655816924">❗️</tg-emoji> <b>Для использования бота необходимо подписаться на канал:</b>',
             parse_mode="HTML",
             reply_markup=subscription_kb()
         )
         return
     all_users.add(message.from_user.id)
-    await send_welcome(message, message.from_user.first_name or "dpyг", message.from_user.id)
+    await send_welcome(message, message.from_user.first_name or "друг", message.from_user.id)
 
 # ===================== SUBSCRIPTION =====================
 @dp.callback_query(F.data == "check_sub")
 async def check_subscription(callback: types.CallbackQuery, state: FSMContext):
     if not await is_subscribed(callback.from_user.id):
-        await callback.answer("❌ Вы ещё не поdписanы nа kаnал!", show_alert=True)
+        await callback.answer("❌ Вы ещё не подписаны на канал!", show_alert=True)
         return
     all_users.add(callback.from_user.id)
     await callback.message.delete()
-    await send_welcome(callback.message, callback.from_user.first_name or "dpyг", callback.from_user.id)
+    await send_welcome(callback.message, callback.from_user.first_name or "друг", callback.from_user.id)
     await callback.answer()
 
 # ===================== PROFILE =====================
@@ -299,7 +310,6 @@ async def profile(message: types.Message):
     user_id = message.from_user.id
     user_orders = [o for o in orders.values() if o.get("user_id") == user_id]
     
-    total_submitted = len(user_orders)
     paid_count = len([o for o in user_orders if o.get("status") == "paid"])
     cancelled_count = len([o for o in user_orders if o.get("status") == "cancelled"])
     
@@ -307,14 +317,17 @@ async def profile(message: types.Message):
     username = f"@{message.from_user.username}" if message.from_user.username else f"id:{user_id}"
 
     text = (
-        f'<tg-emoji emoji-id="5472178859300363509">🏖️</tg-emoji> Профиль ({username})\n\n'
-        f'<tg-emoji emoji-id="5233326571099534068">💸</tg-emoji> Баланс {user_balance:.1f} USDT\n\n'
-        f'<tg-emoji emoji-id="5298520596945070277">📊</tg-emoji> Всего сдано <code>~</code> {total_submitted}\n\n'
-        f'<tg-emoji emoji-id="5395348109192601035">👌</tg-emoji> Которые выплчены {paid_count}\n\n'
-        f'<tg-emoji emoji-id="5409023834818878389">👎</tg-emoji> Которые отменили {cancelled_count}'
+        f'<b><tg-emoji emoji-id="5472178859300363509">🏖️</tg-emoji> Профиль {username}</b>\n\n'
+        f'<b><tg-emoji emoji-id="5233326571099534068">💸</tg-emoji> Баланс {user_balance:.1f} USDT</b>\n\n'
+        f'<b><tg-emoji emoji-id="5298520596945070277">📊</tg-emoji> Всего сдано <code>~ ~ ~</code></b>\n\n'
+        f'<blockquote><b><tg-emoji emoji-id="5395348109192601035">👌</tg-emoji> Которые выплчены {paid_count}\n'
+        f'<tg-emoji emoji-id="5409023834818878389">👎</tg-emoji> Которые отменили {cancelled_count}</b></blockquote>'
     )
 
-    await message.answer(text, parse_mode="HTML", reply_markup=profile_inline_kb())
+    # Показываем кнопку "Вывести баланс" только если баланс > 0
+    markup = profile_inline_kb() if user_balance > 0 else None
+
+    await message.answer(text, parse_mode="HTML", reply_markup=markup)
 
 # ===================== WITHDRAW =====================
 @dp.callback_query(F.data == "withdraw_start")
@@ -322,9 +335,13 @@ async def withdraw_start(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     user_balance = user_balances.get(user_id, 0.0)
 
+    if user_balance <= 0:
+        await callback.answer("У вас нулевой баланс!", show_alert=True)
+        return
+
     text = (
         f'<tg-emoji emoji-id="5420323339723881652">⚠️</tg-emoji> '
-        f'Вы выводите баланс с бота ({user_balance:.1f} USDT), как желаете вывести?'
+        f'<b>Вы выводите баланс с бота ({user_balance:.1f} USDT), как желаете вывести?</b>'
     )
 
     await callback.message.edit_text(
@@ -343,15 +360,14 @@ async def withdraw_all_handler(callback: types.CallbackQuery):
         await callback.answer("У вас нулевой баланс!", show_alert=True)
         return
 
-    # Логика списания/вывода
     user_balances[user_id] = 0.0
-    await callback.message.answer(f"✅ Заявка на вывод всего баланса ({user_balance:.1f} USDT) принята!")
+    await callback.message.answer(f"✅ <b>Заявка на вывод всего баланса ({user_balance:.1f} USDT) принята!</b>", parse_mode="HTML")
     await callback.answer()
 
 @dp.callback_query(F.data == "withdraw_custom")
 async def withdraw_custom_handler(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(UserState.withdraw_amount)
-    await callback.message.answer("📝 Введите сумму для вывода:")
+    await callback.message.answer("📝 <b>Введите сумму для вывода:</b>", parse_mode="HTML")
     await callback.answer()
 
 @dp.message(UserState.withdraw_amount)
@@ -364,22 +380,75 @@ async def process_withdraw_amount(message: types.Message, state: FSMContext):
         if amount <= 0:
             raise ValueError
     except ValueError:
-        await message.answer("❌ Пожалуйста, введите корректное число.")
+        await message.answer("❌ <b>Пожалуйста, введите корректное число.</b>", parse_mode="HTML")
         return
 
     if amount > user_balance:
-        await message.answer(f"❌ Запрошенная сумма превышает ваш баланс ({user_balance:.1f} USDT).")
+        await message.answer(f"❌ <b>Запрошенная сумма превышает ваш баланс ({user_balance:.1f} USDT).</b>", parse_mode="HTML")
         return
 
     user_balances[user_id] = user_balance - amount
     await state.clear()
-    await message.answer(f"✅ Заявка на вывод суммы {amount:.1f} USDT принята!")
+    await message.answer(f"✅ <b>Заявка на вывод суммы {amount:.1f} USDT принята!</b>", parse_mode="HTML")
+
+# ===================== CREDIT (OPERATOR) =====================
+@dp.callback_query(F.data.startswith("credit_"))
+async def credit_start(callback: types.CallbackQuery, state: FSMContext):
+    order_id = int(callback.data.split("_")[1])
+    order = orders.get(order_id)
+    if not order:
+        await callback.answer("Заявка не найдена!", show_alert=True)
+        return
+
+    await state.update_data(order_id=order_id)
+    await state.set_state(OperatorState.credit_amount)
+    await callback.message.reply(
+        f"💵 <b>Введите сумму зачёта для заявки #{order_id} (в USDT):</b>",
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@dp.message(OperatorState.credit_amount)
+async def credit_finish(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    order_id = data.get("order_id")
+    order = orders.get(order_id)
+
+    if not order:
+        await message.answer("❌ <b>Заявка не найдена.</b>", parse_mode="HTML")
+        await state.clear()
+        return
+
+    try:
+        amount = float(message.text.replace(",", "."))
+        if amount <= 0:
+            raise ValueError
+    except ValueError:
+        await message.answer("❌ <b>Введите корректное число.</b>", parse_mode="HTML")
+        return
+
+    user_id = order["user_id"]
+    user_balances[user_id] = user_balances.get(user_id, 0.0) + amount
+    order["status"] = "paid"
+
+    # Уведомляем сдатчика
+    await bot.send_message(
+        user_id,
+        f'🎉 <b>На ваш баланс зачтено {amount:.1f} USDT</b>',
+        parse_mode="HTML"
+    )
+
+    await message.answer(
+        f"✅ <b>Заявка #{order_id} зачтена на сумму {amount:.1f} USDT!</b>",
+        parse_mode="HTML"
+    )
+    await state.clear()
 
 # ===================== SUPPORT =====================
 @dp.message(F.text == BTN_SUPPORT)
 async def support(message: types.Message):
     await message.answer(
-        "<b>Нaжмитe knопky nижe:</b>",
+        "<b>Нажмите кнопку ниже:</b>",
         parse_mode="HTML",
         reply_markup=support_kb()
     )
@@ -389,7 +458,7 @@ async def support(message: types.Message):
 async def bilka(message: types.Message, state: FSMContext):
     await state.set_state(UserState.sale_type)
     await message.answer(
-        '<tg-emoji emoji-id="5965361771987342650">🫵</tg-emoji> <b>Бiлаyн — выберите тiп:</b>',
+        '<tg-emoji emoji-id="5965361771987342650">🫵</tg-emoji> <b>Билайн — выберите тип:</b>',
         parse_mode="HTML",
         reply_markup=sale_type_kb()
     )
@@ -397,22 +466,22 @@ async def bilka(message: types.Message, state: FSMContext):
 @dp.callback_query(F.data.in_({"type_moment", "type_hold"}))
 async def choose_sale_type(callback: types.CallbackQuery, state: FSMContext):
     if callback.data == "type_moment":
-        sale_type = "Момenт"
+        sale_type = "Момент"
         type_emoji = '<tg-emoji emoji-id="5431449001532594346">⚡️</tg-emoji>'
     else:
-        sale_type = "Xолд"
+        sale_type = "Холд"
         type_emoji = '<tg-emoji emoji-id="5433737699410319194">🥶</tg-emoji>'
 
     await state.update_data(sale_type=sale_type)
     await state.set_state(UserState.phone)
     
     await callback.message.edit_text(
-        f"{type_emoji} <b>Тiп:</b> {sale_type}",
+        f"{type_emoji} <b>Тип:</b> {sale_type}",
         parse_mode="HTML"
     )
     
     await callback.message.answer(
-        '<tg-emoji emoji-id="5467539229468793355">📞</tg-emoji> <b>Ввеdитe номep тeлeфоna:</b>',
+        '<tg-emoji emoji-id="5467539229468793355">📞</tg-emoji> <b>Введите номер телефона:</b>',
         parse_mode="HTML",
         reply_markup=cancel_kb
     )
@@ -421,10 +490,10 @@ async def choose_sale_type(callback: types.CallbackQuery, state: FSMContext):
 # ===================== PHONE / CODE =====================
 @dp.message(UserState.phone)
 async def save_phone(message: types.Message, state: FSMContext):
-    if message.text == BTN_CANCEL or "Отмеnить" in message.text or "Отменить" in message.text:
+    if message.text == BTN_CANCEL or "Отменить" in message.text:
         await state.clear()
         await message.answer(
-            '<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Заяvка отмеnена. Dля вyxоdа в главnое meню /start</b>',
+            '<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Заявка отменена. Для выхода в главное меню /start</b>',
             parse_mode="HTML",
             reply_markup=main_kb()
         )
@@ -432,9 +501,9 @@ async def save_phone(message: types.Message, state: FSMContext):
 
     if not is_beeline_number(message.text):
         await message.answer(
-            '<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Неkoррeктный nомеp тeлефоnа!</b>\n\n'
-            "<blockquote>Пожaлyйста, ввeдите коppектный nомеp oпеpaтopa <b>Бiлаyн</b> "
-            "nачинaющийся с +7, 7 или 8 (naпpимеp: <code>+79031234567</code>).</blockquote>",
+            '<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Некорректный номер телефона!</b>\n\n'
+            "<blockquote>Пожалуйста, введите корректный номер оператора <b>Билайн</b> "
+            "начинающийся с +7, 7 или 8 (например: <code>+79031234567</code>).</blockquote>",
             parse_mode="HTML"
         )
         return
@@ -445,7 +514,7 @@ async def save_phone(message: types.Message, state: FSMContext):
     order_counter += 1
 
     data = await state.get_data()
-    sale_type = data.get("sale_type", "ne уkaзан")
+    sale_type = data.get("sale_type", "не указан")
 
     orders[order_id] = {
         "user_id": message.from_user.id,
@@ -457,7 +526,7 @@ async def save_phone(message: types.Message, state: FSMContext):
 
     await bot.send_message(
         OPERATORS_GROUP_ID,
-        f"<b>Новая зaявka #{order_id}</b>\n"
+        f"<b>Новая заявка #{order_id}</b>\n"
         f"━━━━━━━━━━━━━━\n"
         f"👤 {username}\n"
         f"📱 {message.text}\n"
@@ -468,8 +537,8 @@ async def save_phone(message: types.Message, state: FSMContext):
 
     await state.clear()
     await message.answer(
-        '<tg-emoji emoji-id="5413482938585063042">👍</tg-emoji> <b>Нoмep пpиnят.</b>\n\n'
-        "<blockquote>Ожиdaйтe зaпpoсa kоdа от опeратоpа</blockquote>",
+        '<tg-emoji emoji-id="5413482938585063042">👍</tg-emoji> <b>Номер принят.</b>\n\n'
+        "<blockquote>Ожидайте запроса кода от оператора</blockquote>",
         parse_mode="HTML",
         reply_markup=main_kb()
     )
@@ -483,12 +552,12 @@ async def request_code(callback: types.CallbackQuery):
     order["status"] = "waiting_code"
     await bot.send_message(
         order["user_id"],
-        '<tg-emoji emoji-id="5242628160297641831">🔔</tg-emoji> <b>Опеpaтоp запpaшивает kоd!</b>\n\n'
-        '<blockquote>Нажмите kнопky нижe и введите попyченnый kоd.</blockquote>',
+        '<tg-emoji emoji-id="5242628160297641831">🔔</tg-emoji> <b>Оператор запрашивает код!</b>\n\n'
+        '<blockquote>Нажмите кнопку ниже и введите полученный код.</blockquote>',
         parse_mode="HTML",
         reply_markup=user_kb(order_id)
     )
-    await callback.answer("Отпpaвлеno")
+    await callback.answer("Отправлено")
 
 @dp.callback_query(F.data.startswith("code_"))
 async def enter_code(callback: types.CallbackQuery, state: FSMContext):
@@ -496,7 +565,7 @@ async def enter_code(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(order_id=order_id)
     await state.set_state(UserState.code)
     await callback.message.answer(
-        '<tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> <b>Ввеdитe kоd:</b>',
+        '<tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> <b>Введите код:</b>',
         parse_mode="HTML"
     )
     await callback.answer()
@@ -509,7 +578,7 @@ async def receive_code(message: types.Message, state: FSMContext):
 
     await bot.send_message(
         OPERATORS_GROUP_ID,
-        f"<b>Коd по заявke #{order_id}</b>\n"
+        f"<b>Код по заявке #{order_id}</b>\n"
         f"━━━━━━━━━━━━━━\n"
         f"📝 {message.text}",
         parse_mode="HTML",
@@ -517,8 +586,8 @@ async def receive_code(message: types.Message, state: FSMContext):
     )
     order["status"] = "waiting_operator"
     await message.answer(
-        '<tg-emoji emoji-id="5427009714745517609">✅</tg-emoji> <b>Кod отпpавлеn!</b>\n\n'
-        '<blockquote>Ожиdайтe запpосa втopoгo kоdа.</blockquote>',
+        '<tg-emoji emoji-id="5427009714745517609">✅</tg-emoji> <b>Код отправлен!</b>\n\n'
+        '<blockquote>Ожидайте запроса второго кода.</blockquote>',
         parse_mode="HTML"
     )
     await state.clear()
@@ -530,7 +599,7 @@ async def cancel_start(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(order_id=order_id)
     await state.set_state(OperatorState.cancel_reason)
     await callback.message.reply(
-        "✏️ <b>Введите пpичинy отмeны</b> (ответоm на это сообщение):",
+        "✏️ <b>Введите причину отмены</b> (ответом на это сообщение):",
         parse_mode="HTML"
     )
     await callback.answer()
@@ -538,19 +607,19 @@ async def cancel_start(callback: types.CallbackQuery, state: FSMContext):
 @dp.message(OperatorState.cancel_reason)
 async def cancel_finish(message: types.Message, state: FSMContext):
     data = await state.get_data()
-    order_id = data["order_id"]
+    order_id = data.get("order_id")
     order = orders.get(order_id)
     if order:
         await bot.send_message(
             order["user_id"],
-            f'<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Вашa заяvка #{order_id} отмeneна</b>\n\n'
-            f'<blockquote><tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> <b>Пpичина:</b> {message.text}</blockquote>\n\n'
-            f"Вы можете сdать nомер заnово.",
+            f'<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Ваша заявка #{order_id} отменена</b>\n\n'
+            f'<blockquote><tg-emoji emoji-id="5334882760735598374">📝</tg-emoji> <b>Причина:</b> {message.text}</blockquote>\n\n'
+            f"Вы можете сдать номер заново.",
             parse_mode="HTML"
         )
         order["status"] = "cancelled"
     await message.answer(
-        f"✅ <b>Заявka #{order_id} отмеnена.</b> Пользователъ увеdомлeн.",
+        f"✅ <b>Заявка #{order_id} отменена.</b> Пользователь уведомлен.",
         parse_mode="HTML"
     )
     await state.clear()
@@ -564,11 +633,11 @@ async def user_cancel(callback: types.CallbackQuery, state: FSMContext):
         order["status"] = "cancelled"
         await bot.send_message(
             OPERATORS_GROUP_ID,
-            f"⚠️ <b>Заяvка #{order_id} отмеnена пользовaтeлeм</b> {order['username']}",
+            f"⚠️ <b>Заявка #{order_id} отменена пользователем</b> {order['username']}",
             parse_mode="HTML"
         )
     await callback.message.edit_text(
-        '<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Заяvка отменena. Dля выxодa в глaвnое меnю /start</b>',
+        '<tg-emoji emoji-id="5465665476971471368">❌</tg-emoji> <b>Заявка отменена. Для выхода в главное меню /start</b>',
         parse_mode="HTML"
     )
     await callback.answer()
