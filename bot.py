@@ -50,11 +50,10 @@ class UserState(StatesGroup):
     sale_type = State()
     phone = State()
     code = State()
-    withdraw_amount = State()
 
 class OperatorState(StatesGroup):
     cancel_reason = State()
-    credit_amount = State()  # Для ввода суммы зачёта
+    credit_amount = State()
 
 class AdminState(StatesGroup):
     broadcast = State()
@@ -218,21 +217,15 @@ def profile_inline_kb():
         ]
     )
 
-def withdraw_kb():
+def withdraw_methods_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="⚡️ Вывести весь баланс",
-                    callback_data="withdraw_all",
-                    icon_custom_emoji_id="5456140674028019486",
+                    text="CryptoBot",
+                    callback_data="withdraw_cryptobot",
+                    icon_custom_emoji_id="5361836987642815474",
                     style="danger"
-                ),
-                InlineKeyboardButton(
-                    text="🧾 Указать сумму",
-                    callback_data="withdraw_custom",
-                    icon_custom_emoji_id="5444856076954520455",
-                    style="success"
                 )
             ]
         ]
@@ -324,7 +317,6 @@ async def profile(message: types.Message):
         f'<tg-emoji emoji-id="5409023834818878389">👎</tg-emoji> Которые отменили {cancelled_count}</b></blockquote>'
     )
 
-    # Показываем кнопку "Вывести баланс" только если баланс > 0
     markup = profile_inline_kb() if user_balance > 0 else None
 
     await message.answer(text, parse_mode="HTML", reply_markup=markup)
@@ -339,57 +331,47 @@ async def withdraw_start(callback: types.CallbackQuery):
         await callback.answer("У вас нулевой баланс!", show_alert=True)
         return
 
-    text = (
-        f'<tg-emoji emoji-id="5420323339723881652">⚠️</tg-emoji> '
-        f'<b>Вы выводите баланс с бота ({user_balance:.1f} USDT), как желаете вывести?</b>'
-    )
+    text = '<tg-emoji emoji-id="5965361771987342650">🫵</tg-emoji> <b>Выберите способ:</b>'
 
     await callback.message.edit_text(
         text,
         parse_mode="HTML",
-        reply_markup=withdraw_kb()
+        reply_markup=withdraw_methods_kb()
     )
     await callback.answer()
 
-@dp.callback_query(F.data == "withdraw_all")
-async def withdraw_all_handler(callback: types.CallbackQuery):
+@dp.callback_query(F.data == "withdraw_cryptobot")
+async def withdraw_cryptobot_handler(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     user_balance = user_balances.get(user_id, 0.0)
-    
+
     if user_balance <= 0:
         await callback.answer("У вас нулевой баланс!", show_alert=True)
         return
 
+    amount_to_withdraw = user_balance
     user_balances[user_id] = 0.0
-    await callback.message.answer(f"✅ <b>Заявка на вывод всего баланса ({user_balance:.1f} USDT) принята!</b>", parse_mode="HTML")
+
+    username = f"@{callback.from_user.username}" if callback.from_user.username else f"id:{user_id}"
+
+    # Отправляем сообщение сдатчику
+    await callback.message.edit_text(
+        '<b><tg-emoji emoji-id="5420323339723881652">⚠️</tg-emoji> Заявка на вывод отправлена администратору</b>',
+        parse_mode="HTML"
+    )
+
+    # Уведомляем операторов в чат
+    await bot.send_message(
+        OPERATORS_GROUP_ID,
+        f"<b>📤 Заявка на вывод (CryptoBot)</b>\n"
+        f"━━━━━━━━━━━━━━\n"
+        f"👤 {username}\n"
+        f"🆔 <code>{user_id}</code>\n"
+        f"💵 Сумма: <b>{amount_to_withdraw:.1f} USDT</b>",
+        parse_mode="HTML"
+    )
+
     await callback.answer()
-
-@dp.callback_query(F.data == "withdraw_custom")
-async def withdraw_custom_handler(callback: types.CallbackQuery, state: FSMContext):
-    await state.set_state(UserState.withdraw_amount)
-    await callback.message.answer("📝 <b>Введите сумму для вывода:</b>", parse_mode="HTML")
-    await callback.answer()
-
-@dp.message(UserState.withdraw_amount)
-async def process_withdraw_amount(message: types.Message, state: FSMContext):
-    user_id = message.from_user.id
-    user_balance = user_balances.get(user_id, 0.0)
-
-    try:
-        amount = float(message.text.replace(",", "."))
-        if amount <= 0:
-            raise ValueError
-    except ValueError:
-        await message.answer("❌ <b>Пожалуйста, введите корректное число.</b>", parse_mode="HTML")
-        return
-
-    if amount > user_balance:
-        await message.answer(f"❌ <b>Запрошенная сумма превышает ваш баланс ({user_balance:.1f} USDT).</b>", parse_mode="HTML")
-        return
-
-    user_balances[user_id] = user_balance - amount
-    await state.clear()
-    await message.answer(f"✅ <b>Заявка на вывод суммы {amount:.1f} USDT принята!</b>", parse_mode="HTML")
 
 # ===================== CREDIT (OPERATOR) =====================
 @dp.callback_query(F.data.startswith("credit_"))
@@ -431,7 +413,6 @@ async def credit_finish(message: types.Message, state: FSMContext):
     user_balances[user_id] = user_balances.get(user_id, 0.0) + amount
     order["status"] = "paid"
 
-    # Уведомляем сдатчика
     await bot.send_message(
         user_id,
         f'🎉 <b>На ваш баланс зачтено {amount:.1f} USDT</b>',
