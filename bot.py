@@ -170,7 +170,7 @@ def support_kb():
 
 def faq_btn():
     return InlineKeyboardButton(
-        text="FAQ",
+        text="FAQ (обязательно к прочтению)",
         url=FAQ_LINK,
         icon_custom_emoji_id="5314504236132747481",
         style="danger"
