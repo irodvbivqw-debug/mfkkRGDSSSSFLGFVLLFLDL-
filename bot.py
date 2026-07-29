@@ -57,21 +57,15 @@ class AdminState(StatesGroup):
 # ===================== KEYBOARDS =====================
 BTN_SUBMIT = "Сdать бiлаyн"
 BTN_SUPPORT = "Нaписaть в поddержky"
+BTN_FAQ = "⁉️ FAQ"
 BTN_CANCEL = "❌ Отмenить сdачy"
 
 def main_kb():
     builder = ReplyKeyboardBuilder()
-    builder.button(
-        text=BTN_SUBMIT,
-        style="success",
-        icon_custom_emoji_id="5409227184340476957"
-    )
-    builder.button(
-        text=BTN_SUPPORT,
-        style="danger",
-        icon_custom_emoji_id="5444965061749644170"
-    )
-    builder.adjust(1)
+    builder.button(text=BTN_SUBMIT)
+    builder.button(text=BTN_FAQ)
+    builder.button(text=BTN_SUPPORT)
+    builder.adjust(1, 2)  # Кнопка Сдать сверху, FAQ и Поддержка в один ряд ниже
     return builder.as_markup(resize_keyboard=True)
 
 cancel_kb = ReplyKeyboardMarkup(
@@ -163,13 +157,16 @@ def support_kb():
         ]
     )
 
-# Кнопка FAQ (красный стиль + custom emoji)
-def faq_btn():
-    return InlineKeyboardButton(
-        text="FAQ (обязательно)",
-        url=FAQ_LINK,
-        icon_custom_emoji_id="5314504236132747481",
-        style="danger"
+def faq_kb():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text="Перейти в FAQ",
+                url=FAQ_LINK,
+                icon_custom_emoji_id="5314504236132747481",
+                style="danger"
+            )]
+        ]
     )
 
 def welcome_kb():
@@ -180,8 +177,7 @@ def welcome_kb():
                 url=BOT_LINK,
                 icon_custom_emoji_id="5361837567463399422",
                 style="primary"
-            )],
-            [faq_btn()]
+            )]
         ]
     )
 
@@ -251,13 +247,21 @@ async def check_subscription(callback: types.CallbackQuery, state: FSMContext):
     await send_welcome(callback.message, callback.from_user.first_name or "dpyг", callback.from_user.id)
     await callback.answer()
 
-# ===================== SUPPORT =====================
+# ===================== SUPPORT & FAQ =====================
 @dp.message(F.text == BTN_SUPPORT)
 async def support(message: types.Message):
     await message.answer(
         "<b>Нaжмитe knопky nижe:</b>",
         parse_mode="HTML",
         reply_markup=support_kb()
+    )
+
+@dp.message(F.text == BTN_FAQ)
+async def faq(message: types.Message):
+    await message.answer(
+        '<tg-emoji emoji-id="5314504236132747481">⁉️</tg-emoji> <b>Ознакомьтесь с ответами на частые вопросы в нашем канале:</b>',
+        parse_mode="HTML",
+        reply_markup=faq_kb()
     )
 
 # ===================== BILKA =====================
@@ -506,3 +510,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+    
