@@ -194,12 +194,16 @@ async def check_subscription(callback: types.CallbackQuery, state: FSMContext):
 async def profile(message: types.Message):
     user_id = message.from_user.id
     user_orders = [o for o in orders.values() if o.get("user_id") == user_id]
-    paid_count = len([o for o in user_orders if o.get("status") == "paid"])
+    
+    total_count = len(user_orders)
     cancelled_count = len([o for o in user_orders if o.get("status") == "cancelled"])
-    user_balance = user_balances.get(user_id, 0.0)
-    username = f"@{message.from_user.username}" if message.from_user.username else f"id:{user_id}"
+    
+    user_withdraws = [w for w in withdraw_requests.values() if w["user_id"] == user_id]
+    paid_count = len([w for w in user_withdraws if w.get("status") == "paid"])
 
-    active_withdraws = [w for w in withdraw_requests.values() if w["user_id"] == user_id and w["status"] == "pending"]
+    user_balance = user_balances.get(user_id, 0.0)
+
+    active_withdraws = [w for w in user_withdraws if w.get("status") == "pending"]
     timer_text = ""
     if active_withdraws:
         last_w = active_withdraws[-1]
@@ -209,11 +213,13 @@ async def profile(message: types.Message):
         timer_text = f"\n\n<b>⏳ Ожидание выплаты ({last_w['amount']:.1f} USDT): ~{remaining_minutes} мин.</b>"
 
     text = (
-        f'<b><tg-emoji emoji-id="5472178859300363509">🏖️</tg-emoji> Профиль {username}</b>\n\n'
+        f'<tg-emoji emoji-id="5444965061749644170">👨‍💻</tg-emoji> <b>Мой профиль</b>\n\n'
         f'<b><tg-emoji emoji-id="5233326571099534068">💸</tg-emoji> Баланс {user_balance:.1f} USDT</b>\n\n'
-        f'<b><tg-emoji emoji-id="5298520596945070277">📊</tg-emoji> Всего сдано <code>~ ~ ~</code></b>\n\n'
-        f'<blockquote><b><tg-emoji emoji-id="5395348109192601035">👌</tg-emoji> Которые выплчены {paid_count}\n'
-        f'<tg-emoji emoji-id="5409023834818878389">👎</tg-emoji> Которые отменили {cancelled_count}</b></blockquote>'
+        f'<blockquote>'
+        f'<b><tg-emoji emoji-id="5431577498364158238">📊</tg-emoji> Всего сдач --&gt; {total_count}\n'
+        f'<tg-emoji emoji-id="5472030678633684592">💸</tg-emoji> Выплачено {paid_count}\n'
+        f'<tg-emoji emoji-id="5240241223632954241">🚫</tg-emoji> Отменено {cancelled_count}</b>'
+        f'</blockquote>'
         f'{timer_text}'
     )
     
@@ -484,7 +490,7 @@ async def admin_panel(message: types.Message):
 @dp.message(Command("broadcast"))
 async def broadcast_start(message: types.Message, state: FSMContext):
     if message.from_user.id not in ADMIN_IDS:
-        await message.answer("пшел нахуй долбоеб.", parse_mode="HTML")
+        await message.answer("⛔ Нет доступа.", parse_mode="HTML")
         return
     await state.set_state(AdminState.broadcast)
     await message.answer("📢 <b>Введите сообщение для рассылки.</b>\n\n<blockquote>Поддерживаются текст, фото, видео.\nДля отмены — /cancel</blockquote>", parse_mode="HTML")
