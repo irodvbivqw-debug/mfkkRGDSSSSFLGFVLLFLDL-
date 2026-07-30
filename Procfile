@@ -1,2 +1,1 @@
-# Run worker for Telegram bot
-worker: python bot.py
+worker: python belinee4-main/bot.py
