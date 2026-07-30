@@ -34,6 +34,8 @@ all_users: set[int] = set()
 pinned_users: set[int] = set()
 user_balances = {}
 
+MIN_WITHDRAW = 2.0  # Минималка 2 USDT
+
 BEELINE_PREFIXES = {
     "900", "902", "903", "904", "905", "906", "908", "909", 
     "950", "951", "953", "960", "961", "962", "963", "964", 
@@ -65,18 +67,28 @@ class AdminState(StatesGroup):
 # KEYBOARDS
 BTN_SUBMIT = "Сдать билайн"
 BTN_PROFILE = "Мой профиль"
-BTN_WITHDRAW = "Запросить вывод"
 BTN_SUPPORT = "Написать в поддержку"
 BTN_CANCEL = "❌ Отменить сдачу"
 
 def main_kb():
     builder = ReplyKeyboardBuilder()
-    builder.button(text=BTN_WITHDRAW, style="success", icon_custom_emoji_id="5224257782013769471")
     builder.button(text=BTN_SUBMIT, style="success", icon_custom_emoji_id="5409227184340476957")
     builder.button(text=BTN_PROFILE, style="primary", icon_custom_emoji_id="5415594207068822547")
     builder.button(text=BTN_SUPPORT, style="danger", icon_custom_emoji_id="5444965061749644170")
-    builder.adjust(1, 1, 2)
+    builder.adjust(1, 2)
     return builder.as_markup(resize_keyboard=True)
+
+def profile_kb():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[
+            InlineKeyboardButton(
+                text="Запросить вывод", 
+                callback_data="start_withdraw", 
+                icon_custom_emoji_id="5224257782013769471", 
+                style="success"
+            )
+        ]]
+    )
 
 cancel_kb = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text=BTN_CANCEL)]], resize_keyboard=True)
 
@@ -204,25 +216,33 @@ async def profile(message: types.Message):
         f'<tg-emoji emoji-id="5409023834818878389">👎</tg-emoji> Которые отменили {cancelled_count}</b></blockquote>'
         f'{timer_text}'
     )
-    await message.answer(text, parse_mode="HTML")
+    await message.answer(text, parse_mode="HTML", reply_markup=profile_kb())
 
-@dp.message(F.text == BTN_WITHDRAW)
-async def withdraw_btn_handler(message: types.Message, state: FSMContext):
-    user_id = message.from_user.id
+# WITHDRAW FROM PROFILE
+@dp.callback_query(F.data == "start_withdraw")
+async def withdraw_btn_handler(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
     balance = user_balances.get(user_id, 0.0)
-    if balance < 18:
-        await message.answer(f'<tg-emoji emoji-id="5472030678633684592">💸</tg-emoji> <b>Ваш баланс {balance:.1f} USDT</b>\n\n❌ Минимальная сумма для вывода: <b>18 USDT</b>', parse_mode="HTML")
+    
+    if balance < MIN_WITHDRAW:
+        await callback.answer(f"❌ Минимальная сумма вывода: {MIN_WITHDRAW:.0f} USDT!", show_alert=True)
         return
+
     await state.set_state(UserState.withdraw_amount)
-    text = f'<tg-emoji emoji-id="5472030678633684592">💸</tg-emoji> <b>Ваш баланс {balance:.1f} USDT</b>\n\n<b>Введите желаемую сумму вывода ( мин. 18 USDT )</b>\nили нажмите кнопку ниже:'
-    await message.answer(text, parse_mode="HTML", reply_markup=withdraw_all_kb(balance))
+    text = (
+        f'<tg-emoji emoji-id="5472030678633684592">💸</tg-emoji> <b>Ваш баланс {balance:.1f} USDT</b>\n\n'
+        f'<b>Введите желаемую сумму вывода ( мин. {MIN_WITHDRAW:.0f} USDT )</b>\n'
+        f'или нажмите кнопку ниже:'
+    )
+    await callback.message.answer(text, parse_mode="HTML", reply_markup=withdraw_all_kb(balance))
+    await callback.answer()
 
 @dp.callback_query(F.data == "withdraw_all", UserState.withdraw_amount)
 async def withdraw_all_callback(callback: types.CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     balance = user_balances.get(user_id, 0.0)
-    if balance < 18:
-        await callback.answer("Минимальная сумма вывода 18 USDT!", show_alert=True)
+    if balance < MIN_WITHDRAW:
+        await callback.answer(f"Минимальная сумма вывода {MIN_WITHDRAW:.0f} USDT!", show_alert=True)
         return
     await process_withdraw_request(callback.message, user_id, balance, callback.from_user)
     await callback.answer()
@@ -237,8 +257,8 @@ async def withdraw_amount_input(message: types.Message, state: FSMContext):
     except ValueError:
         await message.answer("❌ <b>Введите корректное число.</b>", parse_mode="HTML")
         return
-    if amount < 18:
-        await message.answer("❌ <b>Минимальная сумма вывода 18 USDT.</b>", parse_mode="HTML")
+    if amount < MIN_WITHDRAW:
+        await message.answer(f"❌ <b>Минимальная сумма вывода {MIN_WITHDRAW:.0f} USDT.</b>", parse_mode="HTML")
         return
     if amount > balance:
         await message.answer(f"❌ <b>У вас недостаточно средств! Ваш баланс: {balance:.1f} USDT</b>", parse_mode="HTML")
