@@ -11,7 +11,6 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
-from aiocryptopay import CryptoPay, Networks
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPERATORS_GROUP_ID = int(os.getenv("OPERATORS_GROUP_ID"))
@@ -21,14 +20,10 @@ SUPPORT_USERNAME = os.getenv("SUPPORT_USERNAME")
 ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x]
 BOT_LINK = os.getenv("BOT_LINK")
 FAQ_LINK = "https://t.me/+uu37yAQxUFM2YzMy"
-CRYPTOBOT_API_TOKEN = os.getenv("CRYPTOBOT_API_TOKEN", "")
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
-
-# Инициализация клиента CryptoPay (для основного сетапа используется MAIN_NET, при тестах можно сменить на TEST_NET)
-crypto = CryptoPay(token=CRYPTOBOT_API_TOKEN, network=Networks.MAIN_NET)
 
 orders = {}
 order_counter = 1
@@ -64,6 +59,7 @@ class UserState(StatesGroup):
 class OperatorState(StatesGroup):
     cancel_reason = State()
     credit_amount = State()
+    check_link = State()
 
 class AdminState(StatesGroup):
     broadcast = State()
@@ -430,7 +426,7 @@ async def withdraw_amount_input(message: types.Message, state: FSMContext):
 async def process_withdraw_request(message: types.Message, user_id: int, amount: float, from_user: types.User):
     global withdraw_counter
     
-    # Списываем баланс при формировании заявки
+    # Списываем баланс
     user_balances[user_id] = user_balances.get(user_id, 0.0) - amount
     
     w_id = withdraw_counter
@@ -458,7 +454,7 @@ async def process_withdraw_request(message: types.Message, user_id: int, amount:
     
     await message.answer(user_text, parse_mode="HTML")
 
-    # Уведомление администратору / операторам в чат
+    # Уведомление администратору
     admin_text = (
         f"Заявка на выплату от {username}\n\n"
         f"Сумма {amount:.1f} USDT\n"
@@ -471,9 +467,9 @@ async def process_withdraw_request(message: types.Message, user_id: int, amount:
         reply_markup=admin_withdraw_kb(w_id)
     )
 
-# ===================== ADMIN WITHDRAW ACTION (CRYPTOBOT) =====================
+# ===================== MANUAL WITHDRAW PAY =====================
 @dp.callback_query(F.data.startswith("adm_pay_"))
-async def admin_pay_handler(callback: types.CallbackQuery):
+async def admin_pay_start(callback: types.CallbackQuery, state: FSMContext):
     w_id = int(callback.data.split("_")[2])
     w_req = withdraw_requests.get(w_id)
 
@@ -485,48 +481,54 @@ async def admin_pay_handler(callback: types.CallbackQuery):
         await callback.answer("Заявка уже обработана!", show_alert=True)
         return
 
+    await state.update_data(withdraw_id=w_id)
+    await state.set_state(OperatorState.check_link)
+    
+    await callback.message.reply(
+        f"🔗 <b>Отправьте ссылку на чек для заявки #{w_id} ({w_req['amount']:.1f} USDT):</b>",
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@dp.message(OperatorState.check_link)
+async def admin_pay_finish(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    w_id = data.get("withdraw_id")
+    w_req = withdraw_requests.get(w_id)
+
+    if not w_req or w_req["status"] != "pending":
+        await message.answer("❌ <b>Заявка не найдена или уже обработана.</b>", parse_mode="HTML")
+        await state.clear()
+        return
+
+    check_url = message.text.strip()
+    w_req["status"] = "paid"
     amount = w_req["amount"]
     user_id = w_req["user_id"]
 
-    try:
-        # Создание чека в CryptoPay
-        check = await crypto.create_check(
-            asset="USDT",
-            amount=amount
-        )
-        
-        w_req["status"] = "paid"
+    # Сообщение сдатчику
+    pay_text = (
+        f'<b><tg-emoji emoji-id="5235711785482341993">🎉</tg-emoji> Ваш чек на {amount:.1f} USDT</b>\n'
+        f'заберите его!'
+    )
+    
+    await bot.send_message(
+        user_id,
+        pay_text,
+        parse_mode="HTML",
+        reply_markup=claim_check_kb(check_url)
+    )
 
-        # Отправляем чековую ссылку пользователю
-        pay_text = (
-            f'<b><tg-emoji emoji-id="5235711785482341993">🎉</tg-emoji> Ваш чек на {amount:.1f} USDT</b>\n'
-            f'заберите его!'
-        )
-        await bot.send_message(
-            user_id,
-            pay_text,
-            parse_mode="HTML",
-            reply_markup=claim_check_kb(check.bot_check_url)
-        )
+    elapsed = datetime.datetime.now() - w_req["created_at"]
+    elapsed_min = int(elapsed.total_seconds() // 60)
 
-        # Вычисляем итоговое время ожидания для админа
-        elapsed = datetime.datetime.now() - w_req["created_at"]
-        elapsed_min = int(elapsed.total_seconds() // 60)
-
-        await callback.message.edit_text(
-            f"✅ <b>Выплачено {amount:.1f} USDT</b> пользователю {w_req['username']}\n"
-            f"Время ожидания: {elapsed_min} мин.\n"
-            f"Ссылка на чек: {check.bot_check_url}",
-            parse_mode="HTML"
-        )
-        await callback.answer("Выплата выполнена!")
-
-    except Exception as e:
-        logging.error(f"CryptoPay error: {e}")
-        # Возвращаем баланс в случае ошибки
-        user_balances[user_id] = user_balances.get(user_id, 0.0) + amount
-        w_req["status"] = "failed"
-        await callback.answer(f"Ошибка выплат CryptoBot: {e}", show_alert=True)
+    await message.answer(
+        f"✅ <b>Чек отправлен!</b>\n\n"
+        f"Заявка #{w_id} на {amount:.1f} USDT от {w_req['username']} обработана.\n"
+        f"Время ожидания: {elapsed_min} мин.",
+        parse_mode="HTML"
+    )
+    await state.clear()
 
 @dp.callback_query(F.data.startswith("adm_zero_"))
 async def admin_zero_handler(callback: types.CallbackQuery):
@@ -538,7 +540,6 @@ async def admin_zero_handler(callback: types.CallbackQuery):
         return
 
     w_req["status"] = "zeroed"
-    # Просто аннулируем баланс пользователя без уведомления
     
     elapsed = datetime.datetime.now() - w_req["created_at"]
     elapsed_min = int(elapsed.total_seconds() // 60)
