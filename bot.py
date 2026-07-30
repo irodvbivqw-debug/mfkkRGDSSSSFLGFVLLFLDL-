@@ -216,7 +216,9 @@ async def profile(message: types.Message):
         f'<tg-emoji emoji-id="5409023834818878389">👎</tg-emoji> Которые отменили {cancelled_count}</b></blockquote>'
         f'{timer_text}'
     )
-    await message.answer(text, parse_mode="HTML", reply_markup=profile_kb())
+    
+    reply_markup = profile_kb() if user_balance > 0 else None
+    await message.answer(text, parse_mode="HTML", reply_markup=reply_markup)
 
 # WITHDRAW FROM PROFILE
 @dp.callback_query(F.data == "start_withdraw")
@@ -482,7 +484,7 @@ async def admin_panel(message: types.Message):
 @dp.message(Command("broadcast"))
 async def broadcast_start(message: types.Message, state: FSMContext):
     if message.from_user.id not in ADMIN_IDS:
-        await message.answer("⛔ Нет доступа.", parse_mode="HTML")
+        await message.answer("пшел нахуй долбоеб.", parse_mode="HTML")
         return
     await state.set_state(AdminState.broadcast)
     await message.answer("📢 <b>Введите сообщение для рассылки.</b>\n\n<blockquote>Поддерживаются текст, фото, видео.\nДля отмены — /cancel</blockquote>", parse_mode="HTML")
